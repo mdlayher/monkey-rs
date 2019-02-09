@@ -28,16 +28,18 @@ impl Parser {
         }
     }
 
-    /// Parses the input `Token` stream and populates `program` with its results.
-    pub fn parse(&mut self, program: &mut ast::Program) -> Result<()> {
+    /// Parses the input `Token` stream and creates an `ast::Program`.
+    pub fn parse(&mut self) -> Result<ast::Program> {
+        let mut prog = ast::Program::new();
+
         while !self.current_is(Token::Eof)? {
             let stmt = self.parse_statement()?;
-            program.statements.push(stmt);
+            prog.statements.push(stmt);
 
             self.next_token();
         }
 
-        Ok(())
+        Ok(prog)
     }
 
     /// Looks at the current `Token` and determines if it is the same type as `tok`.

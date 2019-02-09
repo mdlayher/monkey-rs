@@ -2,7 +2,6 @@ extern crate getopts;
 extern crate mdl_monkey;
 
 use getopts::Options;
-use mdl_monkey::ast::Program;
 use mdl_monkey::lexer::{Lexer, Token};
 use mdl_monkey::parser::Parser;
 use std::env;
@@ -76,12 +75,14 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
 fn parse(tokens: Vec<Token>) -> Result<(), String> {
     println!("\nparser:");
 
-    let mut prog = Program::new();
     let mut p = Parser::new(tokens);
 
-    if let Err(err) = p.parse(&mut prog) {
-        return Err(err.to_string());
-    }
+    let prog = match p.parse() {
+        Ok(prog) => prog,
+        Err(err) => {
+            return Err(err.to_string());
+        }
+    };
 
     for s in prog.statements {
         println!("  - {}", s);

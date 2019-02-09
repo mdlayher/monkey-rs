@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::{ast, lexer, parser};
+use mdl_monkey::{lexer, parser};
 
 #[test]
 fn parse_statements() {
@@ -15,8 +15,7 @@ return 5;
 
     let mut parser = parser::Parser::new(tokens);
 
-    let mut program = ast::Program::new();
-    parser.parse(&mut program).unwrap();
+    let _prog = parser.parse().unwrap();
 
     // TODO(mdlayher): finish parser and tests.
 }
