@@ -55,7 +55,7 @@ impl<'a> Lexer<'a> {
     /// Creates a new `Lexer` by accepting an input string.
     pub fn new(input: &'a str) -> Self {
         let mut l = Lexer {
-            input: input,
+            input,
             position: 0,
             read_position: 0,
             ch: 0 as char,
@@ -211,7 +211,7 @@ impl<'a> Lexer<'a> {
     }
 
     // Advances the lexer until all contiguous whitespace is consumed.
-    fn skip_whitespace(&mut self) -> () {
+    fn skip_whitespace(&mut self) {
         while self.ch.is_ascii_whitespace() {
             self.read_char();
         }
@@ -234,5 +234,5 @@ fn lookup_keyword(s: &str) -> Option<Token> {
 
 // Determines if a character is considered a letter in Monkey.
 fn is_letter(c: char) -> bool {
-    return c.is_ascii_alphabetic() || c == '_';
+    c.is_ascii_alphabetic() || c == '_'
 }
