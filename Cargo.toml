@@ -1,0 +1,16 @@
+[package]
+name = "mdl_monkey"
+version = "0.0.1"
+authors = ["Matt Layher <mdlayher@gmail.com>"]
+license = "MIT"
+homepage = "https://github.com/mdlayher/monkey-rs"
+repository = "https://github.com/mdlayher/monkey-rs"
+documentation = "https://docs.rs/mdl_monkey"
+keywords = ["monkey"]
+description = """
+A Rust implementation of the Monkey programming language from <https://interpreterbook.com/>.
+"""
+
+[badges]
+travis-ci = { repository = "mdlayher/monkey-rs" }
+maintenance = { status = "experimental" }
