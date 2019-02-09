@@ -2,9 +2,12 @@ extern crate getopts;
 extern crate mdl_monkey;
 
 use getopts::Options;
+use mdl_monkey::ast::Program;
 use mdl_monkey::lexer::{Lexer, Token};
+use mdl_monkey::parser::Parser;
 use std::env;
 use std::error;
+use std::process;
 
 fn main() -> Result<(), Box<error::Error>> {
     let args: Vec<String> = env::args().collect();
@@ -12,6 +15,7 @@ fn main() -> Result<(), Box<error::Error>> {
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
+    opts.optflag("l", "lex", "only perform the lexing process");
 
     let matches = opts.parse(&args[1..])?;
 
@@ -23,15 +27,36 @@ fn main() -> Result<(), Box<error::Error>> {
     }
 
     // Pass all free arguments to the lexer.
-    lex(&matches.free.join(" "))?;
+    let tokens = match lex(&matches.free.join(" ")) {
+        Ok(tokens) => tokens,
+        Err(err) => {
+            println!("\nlexer error: {}", err);
+            process::exit(1);
+        }
+    };
+
+    if matches.opt_present("l") {
+        return Ok(());
+    }
+
+    match parse(tokens) {
+        Ok(_) => {}
+        Err(err) => {
+            println!("\nparser error: {}", err);
+            process::exit(1);
+        }
+    };
 
     Ok(())
 }
 
-fn lex(input: &str) -> Result<(), String> {
+fn lex(input: &str) -> Result<Vec<Token>, String> {
+    println!("lexer:");
+
     let mut l = Lexer::new(input);
 
-    for t in l.lex() {
+    let tokens = l.lex();
+    for t in &tokens {
         match t {
             Token::Eof => {
                 break;
@@ -40,9 +65,26 @@ fn lex(input: &str) -> Result<(), String> {
                 return Err(format!("illegal token: {}", ill));
             }
             _ => {
-                println!("{:?}", t);
+                println!("  - {:?}", t);
             }
         };
+    }
+
+    Ok(tokens)
+}
+
+fn parse(tokens: Vec<Token>) -> Result<(), String> {
+    println!("\nparser:");
+
+    let mut prog = Program::new();
+    let mut p = Parser::new(tokens);
+
+    if let Err(err) = p.parse(&mut prog) {
+        return Err(err.to_string());
+    }
+
+    for s in prog.statements {
+        println!("  - {}", s);
     }
 
     Ok(())
