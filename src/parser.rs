@@ -1,31 +1,38 @@
 //! A parser for the Monkey programming language from <https://interpreterbook.com/>.
 
 use crate::ast;
-use crate::lexer::Token;
+use crate::lexer::{self, Token};
 
 use std::error;
 use std::fmt;
+use std::mem;
+use std::rc::Rc;
 use std::result;
 
 /// Parses `Token`s and produces an `ast::Program` for the Monkey programming
 /// language.
-pub struct Parser {
-    tokens: Vec<Token>,
+pub struct Parser<'a> {
+    lexer: lexer::Lexer<'a>,
 
     // Track the current and peek indices in the Tokens vector.
-    current: usize,
-    peek: usize,
+    current: Rc<Token>,
+    peek: Rc<Token>,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     /// Creates a new `Parser` by accepting an input vector of `Token`s.
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Parser {
-            tokens,
+    pub fn new(lexer: lexer::Lexer<'a>) -> Self {
+        let mut p = Parser {
+            lexer,
 
-            current: 0,
-            peek: 1,
-        }
+            current: Rc::new(Token::Eof),
+            peek: Rc::new(Token::Eof),
+        };
+
+        p.next_token();
+        p.next_token();
+
+        p
     }
 
     /// Parses the input `Token` stream and creates an `ast::Program`.
@@ -44,25 +51,14 @@ impl Parser {
 
     /// Looks at the current `Token` and determines if it is the same type as `tok`.
     fn current_is(&self, tok: Token) -> Result<bool> {
-        if tok != Token::Eof && self.current >= self.tokens.len() {
-            // We weren't looking for an EOF, but we ended up out of range
-            // anyway.
-            Err(Error::UnexpectedEof)
-        } else {
-            // We're still in range; does tok match what we are searching for?
-            Ok(self.tokens[self.current] == tok)
-        }
+        // We're still in range; does tok match what we are searching for?
+        Ok(*self.current == tok)
     }
 
     /// Peeks at the next `Token` and determines if it is the same type as `tok`.
     fn peek_is(&self, tok: Token) -> Result<bool> {
-        if self.peek >= self.tokens.len() {
-            // We peeked past the end of the tokens vector.
-            Err(Error::UnexpectedEof)
-        } else {
-            // We're still in range; does tok match what we are searching for?
-            Ok(self.tokens[self.peek] == tok)
-        }
+        // We're still in range; does tok match what we are searching for?
+        Ok(*self.peek == tok)
     }
 
     /// Peeks at the next `Token` and expects it to be the same type as `tok`.
@@ -70,39 +66,35 @@ impl Parser {
         if self.peek_is(tok)? {
             Ok(())
         } else {
-            Err(Error::UnexpectedToken(format!(
-                "{:?}",
-                self.tokens[self.peek]
-            )))
+            Err(Error::UnexpectedToken(format!("{:?}", &self.peek)))
         }
     }
 
     /// Peeks and extracts the value from a `Token::Identifier`, or returns an
     /// error if the `Token` is of a different type.
     fn peek_extract_identifier(&self) -> Result<String> {
-        let t = &self.tokens[self.peek];
-        match t {
-            Token::Identifier(id) => Ok(id.clone()),
-            _ => Err(Error::UnexpectedToken(format!("{:?}", t))),
+        if let Token::Identifier(ref id) = *self.peek {
+            Ok(id.clone())
+        } else {
+            Err(Error::UnexpectedToken(format!("{:?}", self.peek)))
         }
     }
 
     /// Advances the parser once in its `Token`s vector.
     fn next_token(&mut self) {
-        self.current = self.peek;
-        self.peek += 1;
+        // current takes the value of peek, and peek is overwritten immediately
+        // after by the next token.
+        mem::swap(&mut self.current, &mut self.peek);
+        self.peek = Rc::new(self.lexer.next_token());
     }
 
     /// Parses a let or return statement.
     fn parse_statement(&mut self) -> Result<ast::Statement> {
-        match &self.tokens[self.current] {
+        match *self.current {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
 
-            _ => Err(Error::UnexpectedToken(format!(
-                "{:?}",
-                self.tokens[self.current]
-            ))),
+            _ => Err(Error::UnexpectedToken(format!("{:?}", self.current))),
         }
     }
 

@@ -25,31 +25,27 @@ fn main() -> Result<(), Box<error::Error>> {
         return Ok(());
     }
 
-    // Pass all free arguments to the lexer.
-    let tokens = match lex(&matches.free.join(" ")) {
-        Ok(tokens) => tokens,
-        Err(err) => {
-            println!("\nlexer error: {}", err);
-            process::exit(1);
-        }
+    // Pass all free arguments to the lexer and parser.
+    let program = matches.free.join(" ");
+
+    if let Err(err) = lex(&program) {
+        println!("\nlexer error: {}", err);
+        process::exit(1);
     };
 
     if matches.opt_present("l") {
         return Ok(());
     }
 
-    match parse(tokens) {
-        Ok(_) => {}
-        Err(err) => {
-            println!("\nparser error: {}", err);
-            process::exit(1);
-        }
+    if let Err(err) = parse(&program) {
+        println!("\nparser error: {}", err);
+        process::exit(1);
     };
 
     Ok(())
 }
 
-fn lex(input: &str) -> Result<Vec<Token>, String> {
+fn lex(input: &str) -> Result<(), String> {
     println!("lexer:");
 
     let mut l = Lexer::new(input);
@@ -69,13 +65,13 @@ fn lex(input: &str) -> Result<Vec<Token>, String> {
         };
     }
 
-    Ok(tokens)
+    Ok(())
 }
 
-fn parse(tokens: Vec<Token>) -> Result<(), String> {
+fn parse(input: &str) -> Result<(), String> {
     println!("\nparser:");
 
-    let mut p = Parser::new(tokens);
+    let mut p = Parser::new(Lexer::new(input));
 
     let prog = match p.parse() {
         Ok(prog) => prog,
