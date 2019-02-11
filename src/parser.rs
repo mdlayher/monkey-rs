@@ -9,18 +9,18 @@ use std::mem;
 use std::rc::Rc;
 use std::result;
 
-/// Parses `Token`s and produces an `ast::Program` for the Monkey programming
-/// language.
+/// Consumes input from a `lexer::Lexer` and produces an `ast::Program` for the
+/// Monkey programming language.
 pub struct Parser<'a> {
     lexer: lexer::Lexer<'a>,
 
-    // Track the current and peek indices in the Tokens vector.
+    // Track the current and peek tokens from the Lexer.
     current: Rc<Token>,
     peek: Rc<Token>,
 }
 
 impl<'a> Parser<'a> {
-    /// Creates a new `Parser` by accepting an input vector of `Token`s.
+    /// Creates a new `Parser` by accepting a `lexer::Lexer`.
     pub fn new(lexer: lexer::Lexer<'a>) -> Self {
         let mut p = Parser {
             lexer,
@@ -35,7 +35,8 @@ impl<'a> Parser<'a> {
         p
     }
 
-    /// Parses the input `Token` stream and creates an `ast::Program`.
+    /// Parses the input program by consuming tokens from the `lexer::Lexer`,
+    /// creating an `ast::Program`.
     pub fn parse(&mut self) -> Result<ast::Program> {
         let mut prog = ast::Program::new();
 

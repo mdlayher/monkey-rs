@@ -1,6 +1,6 @@
 [package]
 name = "mdl_monkey"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Matt Layher <mdlayher@gmail.com>"]
 license = "MIT"
 homepage = "https://github.com/mdlayher/monkey-rs"
