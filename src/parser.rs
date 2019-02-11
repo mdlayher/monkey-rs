@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Result<ast::Program> {
         let mut prog = ast::Program::new();
 
-        while !self.current_is(Token::Eof)? {
+        while self.current != Token::Eof {
             let stmt = self.parse_statement()?;
             prog.statements.push(stmt);
 
@@ -49,21 +49,9 @@ impl<'a> Parser<'a> {
         Ok(prog)
     }
 
-    /// Looks at the current `Token` and determines if it is the same type as `tok`.
-    fn current_is(&self, tok: Token) -> Result<bool> {
-        // We're still in range; does tok match what we are searching for?
-        Ok(self.current == tok)
-    }
-
-    /// Peeks at the next `Token` and determines if it is the same type as `tok`.
-    fn peek_is(&self, tok: Token) -> Result<bool> {
-        // We're still in range; does tok match what we are searching for?
-        Ok(self.peek == tok)
-    }
-
     /// Peeks at the next `Token` and expects it to be the same type as `tok`.
     fn expect_peek(&self, tok: Token) -> Result<()> {
-        if self.peek_is(tok)? {
+        if self.peek == tok {
             Ok(())
         } else {
             Err(Error::UnexpectedToken(format!("{:?}", &self.peek)))
@@ -106,7 +94,7 @@ impl<'a> Parser<'a> {
         self.expect_peek(Token::Assign)?;
         self.next_token();
 
-        while !self.current_is(Token::Semicolon)? {
+        while self.current != Token::Semicolon {
             self.next_token();
         }
 
@@ -122,7 +110,7 @@ impl<'a> Parser<'a> {
     fn parse_return_statement(&mut self) -> Result<ast::Statement> {
         self.next_token();
 
-        while !self.current_is(Token::Semicolon)? {
+        while self.current != Token::Semicolon {
             self.next_token();
         }
 
