@@ -1,7 +1,7 @@
 //! A parser for the Monkey programming language from <https://interpreterbook.com/>.
 
-use super::ast;
-use super::lexer::Token;
+use crate::ast;
+use crate::lexer::Token;
 
 use std::error;
 use std::fmt;
