@@ -6,7 +6,6 @@ use crate::lexer::{self, Token};
 use std::error;
 use std::fmt;
 use std::mem;
-use std::rc::Rc;
 use std::result;
 
 /// Consumes input from a `lexer::Lexer` and produces an `ast::Program` for the
@@ -15,8 +14,8 @@ pub struct Parser<'a> {
     lexer: lexer::Lexer<'a>,
 
     // Track the current and peek tokens from the Lexer.
-    current: Rc<Token>,
-    peek: Rc<Token>,
+    current: Token,
+    peek: Token,
 }
 
 impl<'a> Parser<'a> {
@@ -25,8 +24,8 @@ impl<'a> Parser<'a> {
         let mut p = Parser {
             lexer,
 
-            current: Rc::new(Token::Eof),
-            peek: Rc::new(Token::Eof),
+            current: Token::Eof,
+            peek: Token::Eof,
         };
 
         p.next_token();
@@ -53,13 +52,13 @@ impl<'a> Parser<'a> {
     /// Looks at the current `Token` and determines if it is the same type as `tok`.
     fn current_is(&self, tok: Token) -> Result<bool> {
         // We're still in range; does tok match what we are searching for?
-        Ok(*self.current == tok)
+        Ok(self.current == tok)
     }
 
     /// Peeks at the next `Token` and determines if it is the same type as `tok`.
     fn peek_is(&self, tok: Token) -> Result<bool> {
         // We're still in range; does tok match what we are searching for?
-        Ok(*self.peek == tok)
+        Ok(self.peek == tok)
     }
 
     /// Peeks at the next `Token` and expects it to be the same type as `tok`.
@@ -74,7 +73,7 @@ impl<'a> Parser<'a> {
     /// Peeks and extracts the value from a `Token::Identifier`, or returns an
     /// error if the `Token` is of a different type.
     fn peek_extract_identifier(&self) -> Result<String> {
-        if let Token::Identifier(ref id) = *self.peek {
+        if let Token::Identifier(ref id) = self.peek {
             Ok(id.clone())
         } else {
             Err(Error::UnexpectedToken(format!("{:?}", self.peek)))
@@ -86,12 +85,12 @@ impl<'a> Parser<'a> {
         // current takes the value of peek, and peek is overwritten immediately
         // after by the next token.
         mem::swap(&mut self.current, &mut self.peek);
-        self.peek = Rc::new(self.lexer.next_token());
+        self.peek = self.lexer.next_token();
     }
 
     /// Parses a let or return statement.
     fn parse_statement(&mut self) -> Result<ast::Statement> {
-        match *self.current {
+        match self.current {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
 
