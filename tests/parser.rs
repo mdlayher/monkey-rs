@@ -12,9 +12,9 @@ return 5;
 ",
     );
 
-    let mut parser = parser::Parser::new(lexer);
+    let mut parser = parser::Parser::new(lexer).expect("failed to create parser");
 
-    let _prog = parser.parse().unwrap();
+    let _prog = parser.parse().expect("failed to parse program");
 
     // TODO(mdlayher): finish parser and tests.
 }

@@ -5,10 +5,8 @@ use getopts::Options;
 use mdl_monkey::lexer::{Lexer, Token};
 use mdl_monkey::parser::Parser;
 use std::env;
-use std::error;
-use std::process;
 
-fn main() -> Result<(), Box<error::Error>> {
+fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
 
@@ -16,7 +14,7 @@ fn main() -> Result<(), Box<error::Error>> {
     opts.optflag("h", "help", "print this help menu");
     opts.optflag("l", "lex", "only perform the lexing process");
 
-    let matches = opts.parse(&args[1..])?;
+    let matches = opts.parse(&args[1..]).map_err(|err| err.to_string())?;
 
     // Present usage if '-h' or no arguments.
     if matches.opt_present("h") || matches.free.is_empty() {
@@ -28,19 +26,13 @@ fn main() -> Result<(), Box<error::Error>> {
     // Pass all free arguments to the lexer and parser.
     let program = matches.free.join(" ");
 
-    if let Err(err) = lex(&program) {
-        println!("\nlexer error: {}", err);
-        process::exit(1);
-    };
+    lex(&program)?;
 
     if matches.opt_present("l") {
         return Ok(());
     }
 
-    if let Err(err) = parse(&program) {
-        println!("\nparser error: {}", err);
-        process::exit(1);
-    };
+    parse(&program)?;
 
     Ok(())
 }
@@ -50,7 +42,8 @@ fn lex(input: &str) -> Result<(), String> {
 
     let mut l = Lexer::new(input);
 
-    let tokens = l.lex();
+    let tokens = l.lex().map_err(|err| err.to_string())?;
+
     for t in &tokens {
         match t {
             Token::Eof => {
@@ -71,15 +64,9 @@ fn lex(input: &str) -> Result<(), String> {
 fn parse(input: &str) -> Result<(), String> {
     println!("\nparser:");
 
-    let mut p = Parser::new(Lexer::new(input));
+    let mut p = Parser::new(Lexer::new(input)).map_err(|err| err.to_string())?;
 
-    let prog = match p.parse() {
-        Ok(prog) => prog,
-        Err(err) => {
-            return Err(err.to_string());
-        }
-    };
-
+    let prog = p.parse().map_err(|err| err.to_string())?;
     for s in prog.statements {
         println!("  - {}", s);
     }

@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::lexer::{Lexer, Token};
+use mdl_monkey::lexer::{Error, Lexer, Radix, Token};
 
 #[test]
 fn lex_next_token() {
@@ -26,22 +26,30 @@ if (5 < 10) {
 
 10 == 10;
 10 != 9;
+1.01 2.
 ",
     )
-    .lex();
+    .lex()
+    .expect("failed to lex tokens");
 
     let want = vec![
         //
         Token::Let,
         Token::Identifier("five".to_string()),
         Token::Assign,
-        Token::Integer("5".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 5,
+        },
         Token::Semicolon,
         //
         Token::Let,
         Token::Identifier("ten".to_string()),
         Token::Assign,
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::Semicolon,
         //
         Token::Let,
@@ -76,21 +84,39 @@ if (5 < 10) {
         Token::Minus,
         Token::Slash,
         Token::Asterisk,
-        Token::Integer("5".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 5,
+        },
         Token::Semicolon,
         //
-        Token::Integer("5".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 5,
+        },
         Token::LessThan,
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::GreaterThan,
-        Token::Integer("5".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 5,
+        },
         Token::Semicolon,
         //
         Token::If,
         Token::LeftParen,
-        Token::Integer("5".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 5,
+        },
         Token::LessThan,
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::RightParen,
         Token::LeftBrace,
         Token::Return,
@@ -104,22 +130,109 @@ if (5 < 10) {
         Token::Semicolon,
         Token::RightBrace,
         //
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::Equal,
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::Semicolon,
         //
-        Token::Integer("10".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 10,
+        },
         Token::NotEqual,
-        Token::Integer("9".to_string()),
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 9,
+        },
         Token::Semicolon,
+        //
+        Token::Float(1.01),
+        Token::Float(2.),
         //
         Token::Eof,
     ];
 
+    assert_tokens_equal(&want, &got);
+}
+
+#[test]
+fn lex_integer_literals() {
+    let got = Lexer::new(
+        "
+101
+0b101
+0101
+0o101
+0x101;
+",
+    )
+    .lex()
+    .expect("failed to lex tokens");
+
+    let want = vec![
+        Token::Integer {
+            radix: Radix::Decimal,
+            value: 101,
+        },
+        Token::Integer {
+            radix: Radix::Binary,
+            value: 0b101,
+        },
+        Token::Integer {
+            radix: Radix::Octal,
+            // Rust doesn't support C-style octal literals.
+            value: 0o101,
+        },
+        Token::Integer {
+            radix: Radix::Octal,
+            value: 0o101,
+        },
+        Token::Integer {
+            radix: Radix::Hexadecimal,
+            value: 0x101,
+        },
+        Token::Semicolon,
+        Token::Eof,
+    ];
+
+    assert_tokens_equal(&want, &got);
+}
+
+#[test]
+fn lex_illegal_number() {
+    let inputs = vec!["0bX", "0xX", "0oX", "1X"];
+
+    for input in inputs {
+        let err = Lexer::new(input)
+            .lex()
+            .expect_err(&format!("expected illegal number error for {}", input));
+
+        match err {
+            Error::IllegalInteger(_) => {}
+            _ => panic!("unexpected error type: {:?}", err),
+        };
+    }
+}
+
+#[test]
+fn lex_illegal_number_radix() {
+    let err = Lexer::new("0q000")
+        .lex()
+        .expect_err("expected illegal radix error");
+
+    assert_eq!(err, Error::IllegalIntegerRadix('q'));
+}
+
+fn assert_tokens_equal(want: &[Token], got: &[Token]) {
     assert_eq!(want.len(), got.len());
 
     for (a, b) in want.iter().zip(got) {
-        assert_eq!(*a, b);
+        assert_eq!(*a, *b);
     }
 }

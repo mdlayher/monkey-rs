@@ -20,7 +20,7 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     /// Creates a new `Parser` by accepting a `lexer::Lexer`.
-    pub fn new(lexer: lexer::Lexer<'a>) -> Self {
+    pub fn new(lexer: lexer::Lexer<'a>) -> Result<Self> {
         let mut p = Parser {
             lexer,
 
@@ -28,10 +28,10 @@ impl<'a> Parser<'a> {
             peek: Token::Eof,
         };
 
-        p.next_token();
-        p.next_token();
+        p.next_token()?;
+        p.next_token()?;
 
-        p
+        Ok(p)
     }
 
     /// Parses the input program by consuming tokens from the `lexer::Lexer`,
@@ -43,37 +43,34 @@ impl<'a> Parser<'a> {
             let stmt = self.parse_statement()?;
             prog.statements.push(stmt);
 
-            self.next_token();
+            self.next_token()?;
         }
 
         Ok(prog)
     }
 
-    /// Peeks at the next `Token` and expects it to be the same type as `tok`.
-    fn expect_peek(&self, tok: Token) -> Result<()> {
-        if self.peek == tok {
+    /// Consumes the next `Token` and expects it to be the same type as `tok`.
+    fn expect(&mut self, tok: Token) -> Result<()> {
+        self.next_token()?;
+
+        if self.current == tok {
             Ok(())
         } else {
-            Err(Error::UnexpectedToken(format!("{:?}", &self.peek)))
-        }
-    }
-
-    /// Peeks and extracts the value from a `Token::Identifier`, or returns an
-    /// error if the `Token` is of a different type.
-    fn peek_extract_identifier(&self) -> Result<String> {
-        if let Token::Identifier(ref id) = self.peek {
-            Ok(id.clone())
-        } else {
-            Err(Error::UnexpectedToken(format!("{:?}", self.peek)))
+            Err(Error::UnexpectedToken {
+                want: format!("{:?}", tok),
+                got: format!("{:?}", &self.current),
+            })
         }
     }
 
     /// Advances the parser once in its `Token`s vector.
-    fn next_token(&mut self) {
+    fn next_token(&mut self) -> Result<()> {
         // current takes the value of peek, and peek is overwritten immediately
         // after by the next token.
         mem::swap(&mut self.current, &mut self.peek);
-        self.peek = self.lexer.next_token();
+        self.peek = self.lexer.next_token().map_err(Error::LexerError)?;
+
+        Ok(())
     }
 
     /// Parses a let or return statement.
@@ -82,36 +79,47 @@ impl<'a> Parser<'a> {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
 
-            _ => Err(Error::UnexpectedToken(format!("{:?}", self.current))),
+            _ => Err(Error::UnexpectedToken {
+                want: "let, return".to_string(),
+                got: format!("{:?}", &self.current),
+            }),
         }
     }
 
     /// Parses a let statement.
     fn parse_let_statement(&mut self) -> Result<ast::Statement> {
-        let name = self.peek_extract_identifier()?;
-        self.next_token();
+        self.next_token()?;
+        let name = {
+            // Have we found an identifier for the Let statement?
+            if let Token::Identifier(ref id) = self.current {
+                // If so, return its name.
+                Ok(id.to_string())
+            } else {
+                Err(Error::UnexpectedToken {
+                    want: "identifier".to_string(),
+                    got: format!("{:?}", &self.current),
+                })
+            }
+        }?;
 
-        self.expect_peek(Token::Assign)?;
-        self.next_token();
+        self.expect(Token::Assign)?;
 
         while self.current != Token::Semicolon {
-            self.next_token();
+            self.next_token()?;
         }
 
         Ok(ast::Statement::Let(ast::LetStatement {
-            name: ast::Identifier {
-                value: name.to_string(),
-            },
+            name: ast::Identifier { value: name },
             value: ast::Expression::Todo,
         }))
     }
 
     /// Parses a return statement.
     fn parse_return_statement(&mut self) -> Result<ast::Statement> {
-        self.next_token();
+        self.next_token()?;
 
         while self.current != Token::Semicolon {
-            self.next_token();
+            self.next_token()?;
         }
 
         Ok(ast::Statement::Return(ast::ReturnStatement {
@@ -126,14 +134,20 @@ pub type Result<T> = result::Result<T, Error>;
 /// Specifies the different classes of errors which may occur.
 #[derive(Debug)]
 pub enum Error {
-    UnexpectedToken(String),
+    LexerError(lexer::Error),
+    UnexpectedToken { want: String, got: String },
     UnexpectedEof,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::UnexpectedToken(ref s) => write!(f, "parser found unexpected token: {}", s),
+            Error::LexerError(ref err) => write!(f, "error from lexer: {}", err),
+            Error::UnexpectedToken { ref want, ref got } => write!(
+                f,
+                "parser found unexpected token: {}, expected: {}",
+                got, want,
+            ),
             Error::UnexpectedEof => write!(f, "parser found unexpected EOF"),
         }
     }
@@ -141,6 +155,9 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
-        None
+        match *self {
+            Error::LexerError(ref err) => Some(err),
+            _ => None,
+        }
     }
 }
