@@ -39,13 +39,12 @@ impl<'a> Lexer<'a> {
 
         // Consume tokens from the stream until Eof.
         loop {
-            let t = self.next_token()?;
-            match t {
-                Token::Eof => {
+            match self.next_token()? {
+                t @ Token::Eof => {
                     tokens.push(t);
                     return Ok(tokens);
                 }
-                _ => {
+                t => {
                     tokens.push(t);
                 }
             }
