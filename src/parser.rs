@@ -146,6 +146,7 @@ impl<'a> Parser<'a> {
     fn prefix_parse(&mut self) -> Result<ast::Expression> {
         match self.current {
             Token::Identifier(_) => self.parse_identifier(),
+            Token::Integer { .. } => self.parse_integer_literal(),
             _ => Err(Error::UnexpectedToken {
                 want: "matching prefix parse function".to_string(),
                 got: format!("{:?}", self.current),
@@ -155,7 +156,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an identifier expression.
     fn parse_identifier(&mut self) -> Result<ast::Expression> {
-        // Have we found an identifier for this statement?
+        // Have we found an identifier for this expression?
         if let Token::Identifier(ref id) = self.current {
             // If so, return its name.
             Ok(ast::Expression::Identifier(ast::Identifier {
@@ -164,6 +165,20 @@ impl<'a> Parser<'a> {
         } else {
             Err(Error::UnexpectedToken {
                 want: "identifier".to_string(),
+                got: format!("{:?}", &self.current),
+            })
+        }
+    }
+
+    /// Parses an integer literal expression.
+    fn parse_integer_literal(&mut self) -> Result<ast::Expression> {
+        // Have we found an integer for this expression?
+        if let Token::Integer { value: int, .. } = self.current {
+            // If so, return its value
+            Ok(ast::Expression::Integer(int))
+        } else {
+            Err(Error::UnexpectedToken {
+                want: "integer".to_string(),
                 got: format!("{:?}", &self.current),
             })
         }

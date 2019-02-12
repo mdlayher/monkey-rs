@@ -65,6 +65,7 @@ pub enum Expression {
     Todo,
 
     Identifier(Identifier),
+    Integer(i64),
 }
 
 impl fmt::Display for Expression {
@@ -72,6 +73,7 @@ impl fmt::Display for Expression {
         match *self {
             Expression::Todo => write!(f, "TODO"),
             Expression::Identifier(ref id) => id.fmt(f),
+            Expression::Integer(ref int) => int.fmt(f),
         }
     }
 }

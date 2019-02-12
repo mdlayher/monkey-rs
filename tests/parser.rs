@@ -36,6 +36,27 @@ fn parse_identifier_expression() {
     assert_eq!("foobar", id);
 }
 
+#[test]
+fn parse_integer_literal_expression() {
+    let prog = parse("5;");
+
+    assert_eq!(prog.statements.len(), 1);
+
+    let int = match prog.statements[0] {
+        ast::Statement::Expression(ref expr) => match expr {
+            ast::Expression::Integer(int) => int,
+            _ => {
+                panic!("not an integer expression");
+            }
+        },
+        _ => {
+            panic!("not an expression statement");
+        }
+    };
+
+    assert_eq!(5, *int);
+}
+
 fn parse(input: &str) -> ast::Program {
     let l = lexer::Lexer::new(input);
 
