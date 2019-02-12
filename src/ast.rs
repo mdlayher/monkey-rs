@@ -1,6 +1,8 @@
 //! An abstract syntax tree for the Monkey programming language from
 //! <https://interpreterbook.com/>.
 
+use crate::token;
+
 use std::fmt;
 
 /// The top level structure of a Monkey program.
@@ -48,7 +50,7 @@ impl fmt::Display for Statement {
 /// A statement that binds an expression to an identifier.
 #[derive(Debug)]
 pub struct LetStatement {
-    pub name: Identifier,
+    pub name: String,
     pub value: Expression,
 }
 
@@ -64,8 +66,8 @@ pub enum Expression {
     // TODO(mdlayher): remove!
     Todo,
 
-    Identifier(Identifier),
-    Integer(i64),
+    Identifier(String),
+    Integer(token::Integer),
 }
 
 impl fmt::Display for Expression {
@@ -75,17 +77,5 @@ impl fmt::Display for Expression {
             Expression::Identifier(ref id) => id.fmt(f),
             Expression::Integer(ref int) => int.fmt(f),
         }
-    }
-}
-
-/// A programmer-created identifier.
-#[derive(Debug)]
-pub struct Identifier {
-    pub value: String,
-}
-
-impl fmt::Display for Identifier {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.value)
     }
 }

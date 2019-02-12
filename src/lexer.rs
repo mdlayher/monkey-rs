@@ -1,6 +1,6 @@
 //! A lexer for the Monkey programming language from <https://interpreterbook.com/>.
 
-use crate::token::{Radix, Token};
+use crate::token::{Integer, Radix, Token};
 
 use std::error;
 use std::fmt;
@@ -233,10 +233,10 @@ fn parse_int(chars: &[char]) -> Result<Token> {
     // If the numeric string is too short to contain a radix, assume base 10.
     if chars.len() < 2 {
         let raw: String = chars.iter().collect();
-        return Ok(Token::Integer {
+        return Ok(Token::Integer(Integer {
             radix: Radix::Decimal,
             value: i64::from_str_radix(&raw, 10).map_err(Error::IllegalInteger)?,
-        });
+        }));
     }
 
     // Infer the radix and the number of prefix characters to skip when
@@ -266,10 +266,10 @@ fn parse_int(chars: &[char]) -> Result<Token> {
         Radix::Octal => 8,
     };
 
-    Ok(Token::Integer {
+    Ok(Token::Integer(Integer {
         radix,
         value: i64::from_str_radix(&raw, base).map_err(Error::IllegalInteger)?,
-    })
+    }))
 }
 
 /// A Result type specialized use with for an Error.

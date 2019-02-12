@@ -1,6 +1,8 @@
 //! Syntax tokens for the Monkey programming language from
 //! <https://interpreterbook.com/>.
 
+use std::fmt;
+
 /// The types of tokens recognized by a `Lexer`, along with their associated
 /// data if applicable.
 #[derive(Debug, PartialEq)]
@@ -11,7 +13,7 @@ pub enum Token {
 
     // Identifiers and literals.
     Identifier(String),
-    Integer { radix: Radix, value: i64 },
+    Integer(Integer),
     Float(f64),
 
     // Operators.
@@ -44,11 +46,29 @@ pub enum Token {
     Return,
 }
 
-/// The radix or base of a `Token::Integer`.
-#[derive(Debug, PartialEq)]
+/// An integer value and its associated radix.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Integer {
+    pub radix: Radix,
+    pub value: i64,
+}
+
+/// The radix or base of an `Integer`.
+#[derive(Clone, Debug, PartialEq)]
 pub enum Radix {
     Binary,
     Decimal,
     Hexadecimal,
     Octal,
+}
+
+impl fmt::Display for Integer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.radix {
+            Radix::Binary => write!(f, "0b{:b}", self.value),
+            Radix::Decimal => write!(f, "0b{:b}", self.value),
+            Radix::Hexadecimal => write!(f, "0b{:b}", self.value),
+            Radix::Octal => write!(f, "0b{:b}", self.value),
+        }
+    }
 }

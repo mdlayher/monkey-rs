@@ -1,7 +1,7 @@
 extern crate mdl_monkey;
 
 use mdl_monkey::lexer::{Error, Lexer};
-use mdl_monkey::token::{Radix, Token};
+use mdl_monkey::token::{Integer, Radix, Token};
 
 #[test]
 fn lex_next_token() {
@@ -38,19 +38,19 @@ if (5 < 10) {
         Token::Let,
         Token::Identifier("five".to_string()),
         Token::Assign,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 5,
-        },
+        }),
         Token::Semicolon,
         //
         Token::Let,
         Token::Identifier("ten".to_string()),
         Token::Assign,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::Semicolon,
         //
         Token::Let,
@@ -85,39 +85,39 @@ if (5 < 10) {
         Token::Minus,
         Token::Slash,
         Token::Asterisk,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 5,
-        },
+        }),
         Token::Semicolon,
         //
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 5,
-        },
+        }),
         Token::LessThan,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::GreaterThan,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 5,
-        },
+        }),
         Token::Semicolon,
         //
         Token::If,
         Token::LeftParen,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 5,
-        },
+        }),
         Token::LessThan,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::RightParen,
         Token::LeftBrace,
         Token::Return,
@@ -131,26 +131,26 @@ if (5 < 10) {
         Token::Semicolon,
         Token::RightBrace,
         //
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::Equal,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::Semicolon,
         //
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 10,
-        },
+        }),
         Token::NotEqual,
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 9,
-        },
+        }),
         Token::Semicolon,
         //
         Token::Float(1.01),
@@ -177,27 +177,27 @@ fn lex_integer_literals() {
     .expect("failed to lex tokens");
 
     let want = vec![
-        Token::Integer {
+        Token::Integer(Integer {
             radix: Radix::Decimal,
             value: 101,
-        },
-        Token::Integer {
+        }),
+        Token::Integer(Integer {
             radix: Radix::Binary,
             value: 0b101,
-        },
-        Token::Integer {
+        }),
+        Token::Integer(Integer {
             radix: Radix::Octal,
             // Rust doesn't support C-style octal literals.
             value: 0o101,
-        },
-        Token::Integer {
+        }),
+        Token::Integer(Integer {
             radix: Radix::Octal,
             value: 0o101,
-        },
-        Token::Integer {
+        }),
+        Token::Integer(Integer {
             radix: Radix::Hexadecimal,
             value: 0x101,
-        },
+        }),
         Token::Semicolon,
         Token::Eof,
     ];

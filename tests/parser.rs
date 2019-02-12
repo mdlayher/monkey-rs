@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::{ast, lexer, parser};
+use mdl_monkey::{ast, lexer, parser, token};
 
 #[test]
 fn parse_statements() {
@@ -42,8 +42,13 @@ fn parse_integer_literal_expression() {
 
     assert_eq!(prog.statements.len(), 1);
 
-    let int = match prog.statements[0] {
-        ast::Statement::Expression(ref expr) => match expr {
+    let want = token::Integer {
+        radix: token::Radix::Decimal,
+        value: 5,
+    };
+
+    let got = match &prog.statements[0] {
+        ast::Statement::Expression(expr) => match expr {
             ast::Expression::Integer(int) => int,
             _ => {
                 panic!("not an integer expression");
@@ -54,7 +59,7 @@ fn parse_integer_literal_expression() {
         }
     };
 
-    assert_eq!(5, *int);
+    assert_eq!(want, *got);
 }
 
 fn parse(input: &str) -> ast::Program {

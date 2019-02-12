@@ -6,12 +6,8 @@ use mdl_monkey::ast;
 fn ast_display() {
     let program = ast::Program {
         statements: vec![ast::Statement::Let(ast::LetStatement {
-            name: ast::Identifier {
-                value: "myVar".to_string(),
-            },
-            value: ast::Expression::Identifier(ast::Identifier {
-                value: "anotherVar".to_string(),
-            }),
+            name: "myVar".to_string(),
+            value: ast::Expression::Identifier("anotherVar".to_string()),
         })],
     };
 

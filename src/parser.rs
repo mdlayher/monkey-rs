@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(ast::Statement::Let(ast::LetStatement {
-            name: ast::Identifier { value: name },
+            name,
             value: ast::Expression::Todo,
         }))
     }
@@ -159,9 +159,7 @@ impl<'a> Parser<'a> {
         // Have we found an identifier for this expression?
         if let Token::Identifier(ref id) = self.current {
             // If so, return its name.
-            Ok(ast::Expression::Identifier(ast::Identifier {
-                value: id.to_string(),
-            }))
+            Ok(ast::Expression::Identifier(id.to_string()))
         } else {
             Err(Error::UnexpectedToken {
                 want: "identifier".to_string(),
@@ -173,9 +171,9 @@ impl<'a> Parser<'a> {
     /// Parses an integer literal expression.
     fn parse_integer_literal(&mut self) -> Result<ast::Expression> {
         // Have we found an integer for this expression?
-        if let Token::Integer { value: int, .. } = self.current {
-            // If so, return its value
-            Ok(ast::Expression::Integer(int))
+        if let Token::Integer(int) = &self.current {
+            // If so, return its value.
+            Ok(ast::Expression::Integer(int.clone()))
         } else {
             Err(Error::UnexpectedToken {
                 want: "integer".to_string(),
