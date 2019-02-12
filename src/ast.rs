@@ -27,7 +27,6 @@ impl fmt::Display for Program {
     }
 }
 
-
 /// Possible statement types in Monkey.
 #[derive(Debug)]
 pub enum Statement {

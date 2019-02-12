@@ -73,16 +73,14 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a let or return statement.
+    /// Parses a let, return, or expression statement..
     fn parse_statement(&mut self) -> Result<ast::Statement> {
         match self.current {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
 
-            _ => Err(Error::UnexpectedToken {
-                want: "let, return".to_string(),
-                got: format!("{:?}", &self.current),
-            }),
+            // Anything else must be an expression.
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -126,6 +124,61 @@ impl<'a> Parser<'a> {
             value: ast::Expression::Todo,
         }))
     }
+
+    /// Parses an expression statement.
+    fn parse_expression_statement(&mut self) -> Result<ast::Statement> {
+        let expr = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek == Token::Semicolon {
+            self.next_token()?;
+        }
+
+        Ok(ast::Statement::Expression(expr))
+    }
+
+    /// Parses an expression.
+    fn parse_expression(&mut self, _prec: Precedence) -> Result<ast::Expression> {
+        self.prefix_parse()
+    }
+
+    /// Dispatches the appropriate function to deal with a prefix operator, if
+    /// applicable.
+    fn prefix_parse(&mut self) -> Result<ast::Expression> {
+        match self.current {
+            Token::Identifier(_) => self.parse_identifier(),
+            _ => Err(Error::UnexpectedToken {
+                want: "matching prefix parse function".to_string(),
+                got: format!("{:?}", self.current),
+            }),
+        }
+    }
+
+    /// Parses an identifier expression.
+    fn parse_identifier(&mut self) -> Result<ast::Expression> {
+        // Have we found an identifier for this statement?
+        if let Token::Identifier(ref id) = self.current {
+            // If so, return its name.
+            Ok(ast::Expression::Identifier(ast::Identifier {
+                value: id.to_string(),
+            }))
+        } else {
+            Err(Error::UnexpectedToken {
+                want: "identifier".to_string(),
+                got: format!("{:?}", &self.current),
+            })
+        }
+    }
+}
+
+/// Denotes the precedence of various operators.
+pub enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call,
 }
 
 /// A Result type specialized use with for an Error.
