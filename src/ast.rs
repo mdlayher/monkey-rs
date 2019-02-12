@@ -61,7 +61,7 @@ pub struct ReturnStatement {
 }
 
 /// A computed expression.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     // TODO(mdlayher): remove!
     Todo,
@@ -69,6 +69,7 @@ pub enum Expression {
     Identifier(String),
     Integer(token::Integer),
     Prefix(PrefixExpression),
+    Infix(InfixExpression),
 }
 
 impl fmt::Display for Expression {
@@ -78,12 +79,13 @@ impl fmt::Display for Expression {
             Expression::Identifier(id) => id.fmt(f),
             Expression::Integer(int) => int.fmt(f),
             Expression::Prefix(p) => p.fmt(f),
+            Expression::Infix(i) => i.fmt(f),
         }
     }
 }
 
 /// A prefix expression such as negation or logical not.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PrefixExpression {
     pub operator: token::Token,
     pub right: Box<Expression>,
@@ -92,5 +94,19 @@ pub struct PrefixExpression {
 impl fmt::Display for PrefixExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}{})", self.operator, self.right)
+    }
+}
+
+/// An infix expression such as a mathematical computation.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InfixExpression {
+    pub left: Box<Expression>,
+    pub operator: token::Token,
+    pub right: Box<Expression>,
+}
+
+impl fmt::Display for InfixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({} {} {})", self.left, self.operator, self.right)
     }
 }

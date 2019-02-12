@@ -137,8 +137,21 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an expression.
-    fn parse_expression(&mut self, _prec: Precedence) -> Result<ast::Expression> {
-        self.prefix_parse()
+    fn parse_expression(&mut self, prec: Precedence) -> Result<ast::Expression> {
+        let mut left = self.prefix_parse()?;
+
+        // Continue until we reach a semicolon or a lower precedence operator.
+        let prec_val = prec as u32;
+        while self.peek != Token::Semicolon && prec_val < (precedence(&self.peek) as u32) {
+            match self.infix_parse(&left) {
+                Some(infix) => left = infix?,
+                None => {
+                    return Ok(left);
+                }
+            };
+        }
+
+        Ok(left)
     }
 
     /// Dispatches the appropriate function to deal with a prefix operator, if
@@ -154,6 +167,24 @@ impl<'a> Parser<'a> {
                 want: "matching prefix parse function".to_string(),
                 got: format!("{}", self.current),
             }),
+        }
+    }
+
+    /// Dispatches the appropriate function to deal with an infix operator, if
+    /// applicable.
+    fn infix_parse(&mut self, left: &ast::Expression) -> Option<Result<ast::Expression>> {
+        match self.peek {
+            Token::Plus
+            | Token::Minus
+            | Token::Asterisk
+            | Token::Slash
+            | Token::Equal
+            | Token::NotEqual
+            | Token::LessThan
+            | Token::GreaterThan => Some(self.parse_infix_expression(left)),
+
+            // No infix parsing function.
+            _ => None,
         }
     }
 
@@ -198,6 +229,27 @@ impl<'a> Parser<'a> {
             right,
         }))
     }
+
+    /// Parses a binary operator infix expression.
+    fn parse_infix_expression(&mut self, left: &ast::Expression) -> Result<ast::Expression> {
+        // Advance past left expression.
+        self.next_token()?;
+
+        // Capture operator and determine its precedence.
+        let operator = self.current.clone();
+
+        let prec = precedence(&self.current);
+        self.next_token()?;
+
+        // Parse right expression.
+        let right = Box::new(self.parse_expression(prec)?);
+
+        Ok(ast::Expression::Infix(ast::InfixExpression {
+            left: Box::new(left.clone()),
+            operator,
+            right,
+        }))
+    }
 }
 
 /// Denotes the precedence of various operators.
@@ -209,6 +261,22 @@ pub enum Precedence {
     Product,
     Prefix,
     Call,
+}
+
+// Determines the Precedence value of a given Token.
+fn precedence(tok: &Token) -> Precedence {
+    match tok {
+        Token::Equal => Precedence::Equals,
+        Token::NotEqual => Precedence::Equals,
+        Token::LessThan => Precedence::LessGreater,
+        Token::GreaterThan => Precedence::LessGreater,
+        Token::Plus => Precedence::Sum,
+        Token::Minus => Precedence::Sum,
+        Token::Slash => Precedence::Product,
+        Token::Asterisk => Precedence::Product,
+
+        _ => Precedence::Lowest,
+    }
 }
 
 /// A Result type specialized use with for an Error.

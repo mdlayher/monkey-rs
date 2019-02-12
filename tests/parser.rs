@@ -21,15 +21,12 @@ fn parse_identifier_expression() {
 
     assert_eq!(prog.statements.len(), 1);
 
-    let id = if let ast::Statement::Expression(expr) = &prog.statements[0] {
-        if let ast::Expression::Identifier(id) = expr {
+    let id =
+        if let ast::Statement::Expression(ast::Expression::Identifier(id)) = &prog.statements[0] {
             id.to_string()
         } else {
             panic!("not an identifier expression");
-        }
-    } else {
-        panic!("not an expression statement");
-    };
+        };
 
     assert_eq!("foobar", id);
 }
@@ -45,14 +42,11 @@ fn parse_integer_literal_expression() {
         value: 5,
     };
 
-    let got = if let ast::Statement::Expression(expr) = &prog.statements[0] {
-        if let ast::Expression::Integer(int) = expr {
-            int
-        } else {
-            panic!("not an integer expression");
-        }
+    let got = if let ast::Statement::Expression(ast::Expression::Integer(int)) = &prog.statements[0]
+    {
+        int
     } else {
-        panic!("not an expression statement");
+        panic!("not an integer expression");
     };
 
     assert_eq!(want, *got);
@@ -69,15 +63,12 @@ fn parse_prefix_expressions() {
         let (input, want_op, want_int) = test;
         let prog = parse(input);
 
-        let got = if let ast::Statement::Expression(expr) = &prog.statements[0] {
-            if let ast::Expression::Prefix(pre) = expr {
+        let got =
+            if let ast::Statement::Expression(ast::Expression::Prefix(pre)) = &prog.statements[0] {
                 pre
             } else {
                 panic!("not a prefix expression");
-            }
-        } else {
-            panic!("not an expression statement");
-        };
+            };
 
         let got_int = if let ast::Expression::Integer(int) = &*got.right {
             int
@@ -87,6 +78,67 @@ fn parse_prefix_expressions() {
 
         assert_eq!(want_op, got.operator);
         assert_eq!(want_int, got_int.value)
+    }
+}
+
+#[test]
+fn parse_infix_expressions() {
+    let int = ast::Expression::Integer(token::Integer {
+        radix: token::Radix::Decimal,
+        value: 5,
+    });
+
+    let tests = vec![
+        ("5 + 5;", token::Token::Plus),
+        ("5 - 5;", token::Token::Minus),
+        ("5 * 5;", token::Token::Asterisk),
+        ("5 / 5;", token::Token::Slash),
+        ("5 > 5;", token::Token::GreaterThan),
+        ("5 < 5;", token::Token::LessThan),
+        ("5 == 5;", token::Token::Equal),
+        ("5 != 5;", token::Token::NotEqual),
+    ];
+
+    for (input, want_op) in tests {
+        let prog = parse(input);
+
+        let got =
+            if let ast::Statement::Expression(ast::Expression::Infix(inf)) = &prog.statements[0] {
+                inf
+            } else {
+                panic!("not an infix expression");
+            };
+
+        assert_eq!(int, *got.left);
+        assert_eq!(want_op, got.operator);
+        assert_eq!(int, *got.right);
+    }
+}
+
+#[test]
+fn parse_operator_precedence() {
+    let tests = vec![
+        ("-a * b", "((-a) * b)"),
+        ("!-a", "(!(-a))"),
+        ("a + b + c", "((a + b) + c)"),
+        ("a + b - c", "((a + b) - c)"),
+        ("a * b * c", "((a * b) * c)"),
+        ("a * b / c", "((a * b) / c)"),
+        ("a + b / c", "(a + (b / c))"),
+        ("a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"),
+        ("3 + 4; -5 * 5", "(3 + 4)((-5) * 5)"),
+        ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
+        ("5 < 4 != 3 > 4", "((5 < 4) != (3 > 4))"),
+        (
+            "3 + 4 * 5 == 3 * 1 + 4 * 5",
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
+        ),
+    ];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
     }
 }
 
