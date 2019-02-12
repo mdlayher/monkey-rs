@@ -147,6 +147,8 @@ impl<'a> Parser<'a> {
         match self.current {
             Token::Identifier(_) => self.parse_identifier(),
             Token::Integer { .. } => self.parse_integer_literal(),
+            Token::Bang | Token::Minus => self.parse_prefix_expression(),
+
             _ => Err(Error::UnexpectedToken {
                 want: "matching prefix parse function".to_string(),
                 got: format!("{:?}", self.current),
@@ -180,6 +182,20 @@ impl<'a> Parser<'a> {
                 got: format!("{:?}", &self.current),
             })
         }
+    }
+
+    /// Parses a unary operator-prefixed expression.
+    fn parse_prefix_expression(&mut self) -> Result<ast::Expression> {
+        let operator = self.current.clone();
+
+        self.next_token()?;
+
+        let right = Box::new(self.parse_expression(Precedence::Prefix)?);
+
+        Ok(ast::Expression::Prefix(ast::PrefixExpression {
+            operator,
+            right,
+        }))
     }
 }
 

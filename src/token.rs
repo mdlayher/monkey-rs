@@ -5,7 +5,7 @@ use std::fmt;
 
 /// The types of tokens recognized by a `Lexer`, along with their associated
 /// data if applicable.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     // Control tokens.
     Illegal(char),

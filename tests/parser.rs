@@ -58,6 +58,38 @@ fn parse_integer_literal_expression() {
     assert_eq!(want, *got);
 }
 
+#[test]
+fn parse_prefix_expressions() {
+    let tests = vec![
+        ("!5;", token::Token::Bang, 5),
+        ("-15;", token::Token::Minus, 15),
+    ];
+
+    for test in tests {
+        let (input, want_op, want_int) = test;
+        let prog = parse(input);
+
+        let got = if let ast::Statement::Expression(expr) = &prog.statements[0] {
+            if let ast::Expression::Prefix(pre) = expr {
+                pre
+            } else {
+                panic!("not a prefix expression");
+            }
+        } else {
+            panic!("not an expression statement");
+        };
+
+        let got_int = if let ast::Expression::Integer(ref int) = *got.right {
+            int
+        } else {
+            panic!("not an integer expression");
+        };
+
+        assert_eq!(want_op, got.operator);
+        assert_eq!(want_int, got_int.value)
+    }
+}
+
 fn parse(input: &str) -> ast::Program {
     let l = lexer::Lexer::new(input);
 

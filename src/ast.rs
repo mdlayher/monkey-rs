@@ -68,6 +68,7 @@ pub enum Expression {
 
     Identifier(String),
     Integer(token::Integer),
+    Prefix(PrefixExpression),
 }
 
 impl fmt::Display for Expression {
@@ -76,6 +77,20 @@ impl fmt::Display for Expression {
             Expression::Todo => write!(f, "TODO"),
             Expression::Identifier(ref id) => id.fmt(f),
             Expression::Integer(ref int) => int.fmt(f),
+            Expression::Prefix(ref p) => p.fmt(f),
         }
+    }
+}
+
+/// A prefix expression such as negation or logical not.
+#[derive(Debug)]
+pub struct PrefixExpression {
+    pub operator: token::Token,
+    pub right: Box<Expression>,
+}
+
+impl fmt::Display for PrefixExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}{})", self.operator, self.right)
     }
 }
