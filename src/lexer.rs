@@ -115,7 +115,7 @@ impl<'a> Lexer<'a> {
     }
 
     // Peeks at the next character in the input without advancing the Lexer.
-    fn peek_char(&mut self) -> char {
+    fn peek_char(&self) -> char {
         if self.read_position >= self.input.len() {
             0 as char
         } else {

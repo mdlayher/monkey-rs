@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an identifier expression.
-    fn parse_identifier(&mut self) -> Result<ast::Expression> {
+    fn parse_identifier(&self) -> Result<ast::Expression> {
         // Have we found an identifier for this expression?
         if let Token::Identifier(id) = &self.current {
             // If so, return its name.
@@ -172,7 +172,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an integer literal expression.
-    fn parse_integer_literal(&mut self) -> Result<ast::Expression> {
+    fn parse_integer_literal(&self) -> Result<ast::Expression> {
         // Have we found an integer for this expression?
         if let Token::Integer(int) = &self.current {
             // If so, return its value.
