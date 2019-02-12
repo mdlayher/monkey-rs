@@ -55,7 +55,7 @@ fn lex(input: &str) -> Result<(), String> {
                 return Err(format!("illegal token: {}", ill));
             }
             _ => {
-                println!("  - {:?}", t);
+                println!("  - {}", t);
             }
         };
     }

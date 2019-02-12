@@ -57,8 +57,8 @@ impl<'a> Parser<'a> {
             Ok(())
         } else {
             Err(Error::UnexpectedToken {
-                want: format!("{:?}", tok),
-                got: format!("{:?}", &self.current),
+                want: format!("{}", tok),
+                got: format!("{}", &self.current),
             })
         }
     }
@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
             } else {
                 Err(Error::UnexpectedToken {
                     want: "identifier".to_string(),
-                    got: format!("{:?}", &self.current),
+                    got: format!("{}", &self.current),
                 })
             }
         }?;
@@ -149,9 +149,10 @@ impl<'a> Parser<'a> {
             Token::Integer { .. } => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
 
+            // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
                 want: "matching prefix parse function".to_string(),
-                got: format!("{:?}", self.current),
+                got: format!("{}", self.current),
             }),
         }
     }
@@ -165,7 +166,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(Error::UnexpectedToken {
                 want: "identifier".to_string(),
-                got: format!("{:?}", &self.current),
+                got: format!("{}", &self.current),
             })
         }
     }
@@ -179,7 +180,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(Error::UnexpectedToken {
                 want: "integer".to_string(),
-                got: format!("{:?}", &self.current),
+                got: format!("{}", &self.current),
             })
         }
     }
