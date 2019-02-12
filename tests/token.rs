@@ -25,7 +25,7 @@ fn token_display() {
             }),
             "0b101",
         ),
-                (
+        (
             Token::Integer(Integer {
                 radix: Radix::Octal,
                 value: 0o101,

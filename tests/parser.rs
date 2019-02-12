@@ -21,16 +21,14 @@ fn parse_identifier_expression() {
 
     assert_eq!(prog.statements.len(), 1);
 
-    let id = match prog.statements[0] {
-        ast::Statement::Expression(ref expr) => match expr {
-            ast::Expression::Identifier(ref id) => id.to_string(),
-            _ => {
-                panic!("not an identifier expression");
-            }
-        },
-        _ => {
-            panic!("not an expression statement");
+    let id = if let ast::Statement::Expression(expr) = &prog.statements[0] {
+        if let ast::Expression::Identifier(id) = expr {
+            id.to_string()
+        } else {
+            panic!("not an identifier expression");
         }
+    } else {
+        panic!("not an expression statement");
     };
 
     assert_eq!("foobar", id);
@@ -47,16 +45,14 @@ fn parse_integer_literal_expression() {
         value: 5,
     };
 
-    let got = match &prog.statements[0] {
-        ast::Statement::Expression(expr) => match expr {
-            ast::Expression::Integer(int) => int,
-            _ => {
-                panic!("not an integer expression");
-            }
-        },
-        _ => {
-            panic!("not an expression statement");
+    let got = if let ast::Statement::Expression(expr) = &prog.statements[0] {
+        if let ast::Expression::Integer(int) = expr {
+            int
+        } else {
+            panic!("not an integer expression");
         }
+    } else {
+        panic!("not an expression statement");
     };
 
     assert_eq!(want, *got);
