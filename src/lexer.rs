@@ -186,13 +186,7 @@ impl<'a> Lexer<'a> {
                 f64::from_str(&chars.iter().collect::<String>()).map_err(Error::IllegalFloat)?,
             ))
         } else {
-            let token = parse_int(&chars)?;
-            match token {
-                Token::Integer { .. } => Ok(token),
-                _ => {
-                    panic!("parse_int returned a non-Token::Integer variant");
-                }
-            }
+            Ok(Token::Integer(parse_int(&chars)?))
         }
     }
 
@@ -228,15 +222,15 @@ fn is_number(c: char) -> bool {
     c >= '0' && c <= '9'
 }
 
-// Parses a Token::Integer from a sequence of characters.
-fn parse_int(chars: &[char]) -> Result<Token> {
+// Parses an Integer from a sequence of characters.
+fn parse_int(chars: &[char]) -> Result<Integer> {
     // If the numeric string is too short to contain a radix, assume base 10.
     if chars.len() < 2 {
         let raw: String = chars.iter().collect();
-        return Ok(Token::Integer(Integer {
+        return Ok(Integer {
             radix: Radix::Decimal,
             value: i64::from_str_radix(&raw, 10).map_err(Error::IllegalInteger)?,
-        }));
+        });
     }
 
     // Infer the radix and the number of prefix characters to skip when
@@ -266,10 +260,10 @@ fn parse_int(chars: &[char]) -> Result<Token> {
         Radix::Octal => 8,
     };
 
-    Ok(Token::Integer(Integer {
+    Ok(Integer {
         radix,
         value: i64::from_str_radix(&raw, base).map_err(Error::IllegalInteger)?,
-    }))
+    })
 }
 
 /// A Result type specialized use with for an Error.
