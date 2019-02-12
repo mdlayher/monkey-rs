@@ -17,9 +17,21 @@ impl Program {
     }
 }
 
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.statements {
+            stmt.fmt(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+
 /// Possible statement types in Monkey.
 #[derive(Debug)]
 pub enum Statement {
+    Expression(Expression),
     Let(LetStatement),
     Return(ReturnStatement),
 }
@@ -27,6 +39,7 @@ pub enum Statement {
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            Statement::Expression(ref stmt) => stmt.fmt(f),
             Statement::Let(ref stmt) => write!(f, "let {} = {};", stmt.name, stmt.value),
             Statement::Return(ref stmt) => write!(f, "return {};", stmt.value),
         }
