@@ -46,6 +46,20 @@ pub enum Token {
     Return,
 }
 
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Token::Illegal(c) => write!(f, "illegal({})", c),
+            Token::Eof => write!(f, "EOF"),
+            Token::Identifier(s) => write!(f, "identifier({})", s),
+            Token::Integer(i) => i.fmt(f),
+
+            // TODO(mdlayher): populate this entire list.
+            _ => write!(f, "TODO"),
+        }
+    }
+}
+
 /// An integer value and its associated radix.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Integer {
@@ -66,9 +80,9 @@ impl fmt::Display for Integer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.radix {
             Radix::Binary => write!(f, "0b{:b}", self.value),
-            Radix::Decimal => write!(f, "0b{:b}", self.value),
-            Radix::Hexadecimal => write!(f, "0b{:b}", self.value),
-            Radix::Octal => write!(f, "0b{:b}", self.value),
+            Radix::Decimal => write!(f, "{}", self.value),
+            Radix::Hexadecimal => write!(f, "0x{:x}", self.value),
+            Radix::Octal => write!(f, "0o{:o}", self.value),
         }
     }
 }
