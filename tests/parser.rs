@@ -79,7 +79,7 @@ fn parse_prefix_expressions() {
             panic!("not an expression statement");
         };
 
-        let got_int = if let ast::Expression::Integer(ref int) = *got.right {
+        let got_int = if let ast::Expression::Integer(int) = &*got.right {
             int
         } else {
             panic!("not an integer expression");

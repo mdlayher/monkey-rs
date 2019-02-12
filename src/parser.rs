@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
         self.next_token()?;
         let name = {
             // Have we found an identifier for the Let statement?
-            if let Token::Identifier(ref id) = self.current {
+            if let Token::Identifier(id) = &self.current {
                 // If so, return its name.
                 Ok(id.to_string())
             } else {
@@ -160,7 +160,7 @@ impl<'a> Parser<'a> {
     /// Parses an identifier expression.
     fn parse_identifier(&mut self) -> Result<ast::Expression> {
         // Have we found an identifier for this expression?
-        if let Token::Identifier(ref id) = self.current {
+        if let Token::Identifier(id) = &self.current {
             // If so, return its name.
             Ok(ast::Expression::Identifier(id.to_string()))
         } else {
@@ -224,9 +224,9 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::LexerError(ref err) => write!(f, "error from lexer: {}", err),
-            Error::UnexpectedToken { ref want, ref got } => write!(
+        match self {
+            Error::LexerError(err) => write!(f, "error from lexer: {}", err),
+            Error::UnexpectedToken { want, got } => write!(
                 f,
                 "parser found unexpected token: {}, expected: {}",
                 got, want,
@@ -238,8 +238,8 @@ impl fmt::Display for Error {
 
 impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
-        match *self {
-            Error::LexerError(ref err) => Some(err),
+        match self {
+            Error::LexerError(err) => Some(err),
             _ => None,
         }
     }

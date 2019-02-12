@@ -278,19 +278,19 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::IllegalFloat(ref err) => write!(f, "illegal floating point number: {}", err),
-            Error::IllegalIntegerRadix(ref r) => write!(f, "illegal number radix: {}", r),
-            Error::IllegalInteger(ref err) => write!(f, "illegal integer number: {}", err),
+        match self {
+            Error::IllegalFloat(err) => write!(f, "illegal floating point number: {}", err),
+            Error::IllegalIntegerRadix(r) => write!(f, "illegal number radix: {}", r),
+            Error::IllegalInteger(err) => write!(f, "illegal integer number: {}", err),
         }
     }
 }
 
 impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
-        match *self {
-            Error::IllegalFloat(ref err) => Some(err),
-            Error::IllegalInteger(ref err) => Some(err),
+        match self {
+            Error::IllegalFloat(err) => Some(err),
+            Error::IllegalInteger(err) => Some(err),
             _ => None,
         }
     }

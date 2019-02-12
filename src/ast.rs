@@ -39,10 +39,10 @@ pub enum Statement {
 
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Statement::Expression(ref stmt) => stmt.fmt(f),
-            Statement::Let(ref stmt) => write!(f, "let {} = {};", stmt.name, stmt.value),
-            Statement::Return(ref stmt) => write!(f, "return {};", stmt.value),
+        match self {
+            Statement::Expression(stmt) => stmt.fmt(f),
+            Statement::Let(stmt) => write!(f, "let {} = {};", stmt.name, stmt.value),
+            Statement::Return(stmt) => write!(f, "return {};", stmt.value),
         }
     }
 }
@@ -73,11 +73,11 @@ pub enum Expression {
 
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
+        match self {
             Expression::Todo => write!(f, "TODO"),
-            Expression::Identifier(ref id) => id.fmt(f),
-            Expression::Integer(ref int) => int.fmt(f),
-            Expression::Prefix(ref p) => p.fmt(f),
+            Expression::Identifier(id) => id.fmt(f),
+            Expression::Integer(int) => int.fmt(f),
+            Expression::Prefix(p) => p.fmt(f),
         }
     }
 }
