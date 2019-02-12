@@ -51,11 +51,36 @@ impl fmt::Display for Token {
         match self {
             Token::Illegal(c) => write!(f, "illegal({})", c),
             Token::Eof => write!(f, "EOF"),
+
             Token::Identifier(s) => write!(f, "identifier({})", s),
             Token::Integer(i) => i.fmt(f),
+            Token::Float(fl) => fl.fmt(f),
 
-            // TODO(mdlayher): populate this entire list.
-            _ => write!(f, "TODO"),
+            Token::Assign => write!(f, "="),
+            Token::Plus => write!(f, "+"),
+            Token::Minus => write!(f, "-"),
+            Token::Bang => write!(f, "!"),
+            Token::Asterisk => write!(f, "*"),
+            Token::Slash => write!(f, "/"),
+            Token::Equal => write!(f, "=="),
+            Token::NotEqual => write!(f, "!="),
+            Token::LessThan => write!(f, "<"),
+            Token::GreaterThan => write!(f, ">"),
+
+            Token::Comma => write!(f, ","),
+            Token::Semicolon => write!(f, ";"),
+            Token::LeftParen => write!(f, "("),
+            Token::RightParen => write!(f, ")"),
+            Token::LeftBrace => write!(f, "{{"),
+            Token::RightBrace => write!(f, "}}"),
+
+            Token::Function => write!(f, "fn"),
+            Token::Let => write!(f, "let"),
+            Token::True => write!(f, "true"),
+            Token::False => write!(f, "false"),
+            Token::If => write!(f, "if"),
+            Token::Else => write!(f, "else"),
+            Token::Return => write!(f, "return"),
         }
     }
 }
