@@ -46,6 +46,7 @@ fn token_display() {
         (Token::Bang, "!"),
         (Token::Asterisk, "*"),
         (Token::Slash, "/"),
+        (Token::Percent, "%"),
         (Token::Equal, "=="),
         (Token::NotEqual, "!="),
         (Token::LessThan, "<"),

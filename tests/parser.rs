@@ -93,6 +93,7 @@ fn parse_infix_expressions() {
         ("5 - 5;", token::Token::Minus),
         ("5 * 5;", token::Token::Asterisk),
         ("5 / 5;", token::Token::Slash),
+        ("5 % 5;", token::Token::Percent),
         ("5 > 5;", token::Token::GreaterThan),
         ("5 < 5;", token::Token::LessThan),
         ("5 == 5;", token::Token::Equal),
@@ -133,6 +134,7 @@ fn parse_operator_precedence() {
             "3 + 4 * 5 == 3 * 1 + 4 * 5",
             "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
         ),
+        ("1 + 2 % 3", "(1 + (2 % 3))"),
     ];
 
     for (input, want) in tests {

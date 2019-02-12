@@ -28,6 +28,7 @@ if (5 < 10) {
 10 == 10;
 10 != 9;
 1.01 2.
+4 % 2
 ",
     )
     .lex()
@@ -155,6 +156,16 @@ if (5 < 10) {
         //
         Token::Float(1.01),
         Token::Float(2.),
+        //
+        Token::Integer(Integer {
+            radix: Radix::Decimal,
+            value: 4,
+        }),
+        Token::Percent,
+        Token::Integer(Integer {
+            radix: Radix::Decimal,
+            value: 2,
+        }),
         //
         Token::Eof,
     ];

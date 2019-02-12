@@ -178,6 +178,7 @@ impl<'a> Parser<'a> {
             | Token::Minus
             | Token::Asterisk
             | Token::Slash
+            | Token::Percent
             | Token::Equal
             | Token::NotEqual
             | Token::LessThan
@@ -274,6 +275,7 @@ fn precedence(tok: &Token) -> Precedence {
         Token::Minus => Precedence::Sum,
         Token::Slash => Precedence::Product,
         Token::Asterisk => Precedence::Product,
+        Token::Percent => Precedence::Product,
 
         _ => Precedence::Lowest,
     }
