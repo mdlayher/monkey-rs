@@ -1,6 +1,7 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::lexer::{Error, Lexer, Radix, Token};
+use mdl_monkey::lexer::{Error, Lexer};
+use mdl_monkey::token::{Radix, Token};
 
 #[test]
 fn lex_next_token() {

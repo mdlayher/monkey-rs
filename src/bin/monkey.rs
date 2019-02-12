@@ -1,9 +1,11 @@
 extern crate getopts;
 extern crate mdl_monkey;
 
-use getopts::Options;
-use mdl_monkey::lexer::{Lexer, Token};
+use mdl_monkey::lexer::Lexer;
 use mdl_monkey::parser::Parser;
+use mdl_monkey::token::Token;
+
+use getopts::Options;
 use std::env;
 
 fn main() -> Result<(), String> {
