@@ -95,6 +95,7 @@ impl fmt::Display for BlockStatement {
 pub enum Expression {
     Identifier(String),
     Integer(token::Integer),
+    Float(f64),
     Boolean(bool),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
@@ -108,6 +109,7 @@ impl fmt::Display for Expression {
         match self {
             Expression::Identifier(id) => id.fmt(f),
             Expression::Integer(int) => int.fmt(f),
+            Expression::Float(fl) => fl.fmt(f),
             Expression::Boolean(b) => b.fmt(f),
             Expression::Prefix(p) => p.fmt(f),
             Expression::Infix(i) => i.fmt(f),

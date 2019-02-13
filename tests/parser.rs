@@ -6,10 +6,10 @@ use mdl_monkey::{ast, lexer, parser, token};
 fn parse_statements() {
     // Good enough!
     let prog =
-        parse("let x = 0x005 % (1 + 6) + add(1, 2, mult(10, fn(x, y) { return x * y; }(2, 2)));");
+        parse("let x = 0x005 % (0.1 + 6) + add(1, 2, mult(10, fn(x, y) { return x * y; }(2, 2)));");
 
     let want =
-        "let x = ((0x5 % (1 + 6)) + add(1, 2, mult(10, fn(x, y) { return (x * y); }(2, 2))));";
+        "let x = ((0x5 % (0.1 + 6)) + add(1, 2, mult(10, fn(x, y) { return (x * y); }(2, 2))));";
 
     assert_eq!(want, format!("{}", prog));
 }
@@ -46,6 +46,23 @@ fn parse_integer_literal_expression() {
         int
     } else {
         panic!("not an integer expression");
+    };
+
+    assert_eq!(want, *got);
+}
+
+#[test]
+fn parse_float_literal_expression() {
+    let prog = parse("0.1;");
+
+    assert_eq!(prog.statements.len(), 1);
+
+    let want = 0.1;
+
+    let got = if let ast::Statement::Expression(ast::Expression::Float(f)) = &prog.statements[0] {
+        f
+    } else {
+        panic!("not a float expression");
     };
 
     assert_eq!(want, *got);

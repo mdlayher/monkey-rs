@@ -167,6 +167,7 @@ impl<'a> Parser<'a> {
                 Ok(ast::Expression::Identifier(name))
             }
             Token::Integer { .. } => self.parse_integer_literal(),
+            Token::Float(_) => self.parse_float_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean_literal(),
             Token::LeftParen => self.parse_grouped_expression(),
@@ -224,6 +225,20 @@ impl<'a> Parser<'a> {
         } else {
             Err(Error::UnexpectedToken {
                 want: "integer".to_string(),
+                got: format!("{}", &self.current),
+            })
+        }
+    }
+
+    /// Parses a float literal expression.
+    fn parse_float_literal(&self) -> Result<ast::Expression> {
+        // Have we found a float for this expression?
+        if let Token::Float(f) = &self.current {
+            // If so, return its value.
+            Ok(ast::Expression::Float(*f))
+        } else {
+            Err(Error::UnexpectedToken {
+                want: "float".to_string(),
                 got: format!("{}", &self.current),
             })
         }
