@@ -173,12 +173,16 @@ impl<'a> Parser<'a> {
     /// applicable.
     fn prefix_parse(&mut self) -> Result<ast::Expression> {
         match self.current {
-            Token::Identifier(_) => self.parse_identifier(),
+            Token::Identifier(_) => {
+                let name = self.parse_identifier_name()?;
+                Ok(ast::Expression::Identifier(name))
+            }
             Token::Integer { .. } => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean_literal(),
             Token::LeftParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
+            Token::Function => self.parse_function_literal(),
 
             // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
@@ -207,12 +211,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses an identifier expression.
-    fn parse_identifier(&self) -> Result<ast::Expression> {
+    /// Parses an identifier's name.
+    fn parse_identifier_name(&self) -> Result<String> {
         // Have we found an identifier for this expression?
         if let Token::Identifier(id) = &self.current {
             // If so, return its name.
-            Ok(ast::Expression::Identifier(id.to_string()))
+            Ok(id.to_string())
         } else {
             Err(Error::UnexpectedToken {
                 want: "identifier".to_string(),
@@ -343,6 +347,56 @@ impl<'a> Parser<'a> {
             consequence,
             alternative,
         }))
+    }
+
+    /// Parses a function literal.
+    fn parse_function_literal(&mut self) -> Result<ast::Expression> {
+        self.expect(Token::LeftParen)?;
+
+        let parameters = self.parse_function_parameters()?;
+
+        self.expect(Token::LeftBrace)?;
+
+        let body = if let ast::Statement::Block(block) = self.parse_block_statement()? {
+            block
+        } else {
+            return Err(Error::UnexpectedToken {
+                want: "function body block statement".to_string(),
+                got: format!("{}", &self.current),
+            });
+        };
+
+        Ok(ast::Expression::Function(ast::FunctionLiteral {
+            parameters,
+            body,
+        }))
+    }
+
+    /// Parses a list of function parameters.
+    fn parse_function_parameters(&mut self) -> Result<Vec<String>> {
+        let mut p = vec![];
+
+        // End of parameter list?
+        if self.peek == Token::RightParen {
+            self.next_token()?;
+            return Ok(p);
+        }
+
+        // Parse the first parameter.
+        self.next_token()?;
+        p.push(self.parse_identifier_name()?);
+
+        // Parse each remaining parameter.
+        while self.peek == Token::Comma {
+            self.next_token()?;
+            self.next_token()?;
+
+            p.push(self.parse_identifier_name()?);
+        }
+
+        self.expect(Token::RightParen)?;
+
+        Ok(p)
     }
 }
 

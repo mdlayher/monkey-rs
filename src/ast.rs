@@ -102,6 +102,7 @@ pub enum Expression {
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     If(IfExpression),
+    Function(FunctionLiteral),
 }
 
 impl fmt::Display for Expression {
@@ -114,6 +115,7 @@ impl fmt::Display for Expression {
             Expression::Prefix(p) => p.fmt(f),
             Expression::Infix(i) => i.fmt(f),
             Expression::If(i) => i.fmt(f),
+            Expression::Function(fl) => fl.fmt(f),
         }
     }
 }
@@ -162,5 +164,18 @@ impl fmt::Display for IfExpression {
         }
 
         Ok(())
+    }
+}
+
+/// A function literal.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FunctionLiteral {
+    pub parameters: Vec<String>,
+    pub body: BlockStatement,
+}
+
+impl fmt::Display for FunctionLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "fn({}) {{ {} }}", self.parameters.join(", "), self.body)
     }
 }

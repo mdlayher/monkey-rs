@@ -184,6 +184,21 @@ fn parse_if_expressions() {
 }
 
 #[test]
+fn parse_function_literals() {
+    let tests = vec![
+        ("fn() {};", "fn() {  }"),
+        ("fn(x) { };", "fn(x) {  }"),
+        ("fn(x, y) { x + y; };", "fn(x, y) { (x + y) }"),
+    ];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
 fn parse_operator_precedence() {
     let tests = vec![
         ("-a * b", "((-a) * b)"),
