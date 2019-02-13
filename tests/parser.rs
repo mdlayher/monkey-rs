@@ -199,6 +199,21 @@ fn parse_function_literals() {
 }
 
 #[test]
+fn parse_call_expressions() {
+    let tests = vec![
+        ("add(1, 2 * 3, 4 + 5);", "add(1, (2 * 3), (4 + 5))"),
+        ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
+        ("add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))", "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"),
+    ];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
 fn parse_operator_precedence() {
     let tests = vec![
         ("-a * b", "((-a) * b)"),

@@ -205,6 +205,7 @@ impl<'a> Parser<'a> {
             | Token::NotEqual
             | Token::LessThan
             | Token::GreaterThan => Some(self.parse_infix_expression(left)),
+            Token::LeftParen => Some(self.parse_call_expression(left)),
 
             // No infix parsing function.
             _ => None,
@@ -398,6 +399,41 @@ impl<'a> Parser<'a> {
 
         Ok(p)
     }
+
+    /// Parses a function call infix expression.
+    fn parse_call_expression(&mut self, left: &ast::Expression) -> Result<ast::Expression> {
+        self.next_token()?;
+
+        // Collect call expression arguments.
+        let mut arguments = vec![];
+
+        // Are there zero arguments?
+        if self.peek == Token::RightParen {
+            self.next_token()?;
+            return Ok(ast::Expression::Call(ast::CallExpression {
+                function: Box::new(left.clone()),
+                arguments,
+            }));
+        }
+
+        // Collect the remaining comma-separated arguments.
+        self.next_token()?;
+        arguments.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek == Token::Comma {
+            self.next_token()?;
+            self.next_token()?;
+
+            arguments.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        self.expect(Token::RightParen)?;
+
+        Ok(ast::Expression::Call(ast::CallExpression {
+            function: Box::new(left.clone()),
+            arguments,
+        }))
+    }
 }
 
 /// Denotes the precedence of various operators.
@@ -423,6 +459,7 @@ fn precedence(tok: &Token) -> Precedence {
         Token::Slash => Precedence::Product,
         Token::Asterisk => Precedence::Product,
         Token::Percent => Precedence::Product,
+        Token::LeftParen => Precedence::Call,
 
         _ => Precedence::Lowest,
     }
