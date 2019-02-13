@@ -1,6 +1,8 @@
 extern crate getopts;
 extern crate mdl_monkey;
 
+use mdl_monkey::ast;
+use mdl_monkey::evaluator;
 use mdl_monkey::lexer::Lexer;
 use mdl_monkey::parser::Parser;
 use mdl_monkey::token::Token;
@@ -26,13 +28,15 @@ fn main() -> Result<(), String> {
     }
 
     // Pass all free arguments to the lexer and parser.
-    let program = matches.free.join(" ");
+    let input = matches.free.join(" ");
 
     if matches.opt_present("l") {
-        lex(&program)?;
+        lex(&input)?;
     }
 
-    parse(&program)?;
+    let prog = parse(&input)?;
+
+    eval(ast::Node::Program(prog))?;
 
     Ok(())
 }
@@ -62,15 +66,25 @@ fn lex(input: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn parse(input: &str) -> Result<(), String> {
+fn parse(input: &str) -> Result<ast::Program, String> {
     println!("parser:");
 
     let mut p = Parser::new(Lexer::new(input)).map_err(|err| err.to_string())?;
 
     let prog = p.parse().map_err(|err| err.to_string())?;
-    for s in prog.statements {
+    for s in &prog.statements {
         println!("  - {}", s);
     }
+
+    println!();
+    Ok(prog)
+}
+
+fn eval(node: ast::Node) -> Result<(), String> {
+    println!("eval:");
+
+    let obj = evaluator::eval(node).map_err(|err| err.to_string())?;
+    println!("  - {}", obj);
 
     Ok(())
 }

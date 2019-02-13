@@ -5,6 +5,24 @@ use crate::token;
 
 use std::fmt;
 
+/// Any AST node in a Monkey program.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Node {
+    Program(Program),
+    Statement(Statement),
+    Expression(Expression),
+}
+
+impl fmt::Display for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Node::Program(p) => p.fmt(f),
+            Node::Statement(s) => s.fmt(f),
+            Node::Expression(e) => e.fmt(f),
+        }
+    }
+}
+
 /// The top level structure of a Monkey program.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
