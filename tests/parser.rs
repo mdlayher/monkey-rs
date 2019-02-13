@@ -65,7 +65,9 @@ fn parse_float_literal_expression() {
         panic!("not a float expression");
     };
 
-    assert_eq!(want, *got);
+    // Direct equality comparison of floats isn't a good idea, see:
+    // https://github.com/rust-lang/rust-clippy/issues/46.
+    assert!((want - *got).abs() < std::f64::EPSILON);
 }
 
 #[test]
