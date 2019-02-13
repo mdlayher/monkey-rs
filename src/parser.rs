@@ -162,6 +162,7 @@ impl<'a> Parser<'a> {
             Token::Integer { .. } => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean_literal(),
+            Token::LeftParen => self.parse_grouped_expression(),
 
             // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
@@ -263,6 +264,19 @@ impl<'a> Parser<'a> {
             operator,
             right,
         }))
+    }
+
+    /// Parses an expression grouped inside parentheses.
+    fn parse_grouped_expression(&mut self) -> Result<ast::Expression> {
+        // Advance past left parenthesis.
+        self.next_token()?;
+
+        // Parse inner expression.
+        let expr = self.parse_expression(Precedence::Lowest)?;
+
+        self.expect(Token::RightParen)?;
+
+        Ok(expr)
     }
 }
 
