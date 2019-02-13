@@ -87,42 +87,31 @@ impl<'a> Parser<'a> {
     /// Parses a let statement.
     fn parse_let_statement(&mut self) -> Result<ast::Statement> {
         self.next_token()?;
-        let name = {
-            // Have we found an identifier for the Let statement?
-            if let Token::Identifier(id) = &self.current {
-                // If so, return its name.
-                Ok(id.to_string())
-            } else {
-                Err(Error::UnexpectedToken {
-                    want: "identifier".to_string(),
-                    got: format!("{}", &self.current),
-                })
-            }
-        }?;
+        let name = self.parse_identifier_name()?;
 
         self.expect(Token::Assign)?;
+        self.next_token()?;
 
-        while self.current != Token::Semicolon {
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek == Token::Semicolon {
             self.next_token()?;
         }
 
-        Ok(ast::Statement::Let(ast::LetStatement {
-            name,
-            value: ast::Expression::Todo,
-        }))
+        Ok(ast::Statement::Let(ast::LetStatement { name, value }))
     }
 
     /// Parses a return statement.
     fn parse_return_statement(&mut self) -> Result<ast::Statement> {
         self.next_token()?;
 
-        while self.current != Token::Semicolon {
+        let value = self.parse_expression(Precedence::Lowest)?;
+
+        if self.peek == Token::Semicolon {
             self.next_token()?;
         }
 
-        Ok(ast::Statement::Return(ast::ReturnStatement {
-            value: ast::Expression::Todo,
-        }))
+        Ok(ast::Statement::Return(ast::ReturnStatement { value }))
     }
 
     /// Parses an expression statement.

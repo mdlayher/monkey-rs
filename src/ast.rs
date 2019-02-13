@@ -93,9 +93,6 @@ impl fmt::Display for BlockStatement {
 /// A computed expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
-    // TODO(mdlayher): remove!
-    Todo,
-
     Identifier(String),
     Integer(token::Integer),
     Boolean(bool),
@@ -109,7 +106,6 @@ pub enum Expression {
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expression::Todo => write!(f, "TODO"),
             Expression::Identifier(id) => id.fmt(f),
             Expression::Integer(int) => int.fmt(f),
             Expression::Boolean(b) => b.fmt(f),

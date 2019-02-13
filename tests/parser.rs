@@ -4,15 +4,14 @@ use mdl_monkey::{ast, lexer, parser, token};
 
 #[test]
 fn parse_statements() {
-    let _prog = parse(
-        "
-let five = 5;
-let ten = 10;
-return 5;
-",
-    );
+    // Good enough!
+    let prog =
+        parse("let x = 0x005 % (1 + 6) + add(1, 2, mult(10, fn(x, y) { return x * y; }(2, 2)));");
 
-    // TODO(mdlayher): finish parser and tests.
+    let want =
+        "let x = ((0x5 % (1 + 6)) + add(1, 2, mult(10, fn(x, y) { return (x * y); }(2, 2))));";
+
+    assert_eq!(want, format!("{}", prog));
 }
 
 #[test]
@@ -203,7 +202,10 @@ fn parse_call_expressions() {
     let tests = vec![
         ("add(1, 2 * 3, 4 + 5);", "add(1, (2 * 3), (4 + 5))"),
         ("a + add(b * c) + d", "((a + add((b * c))) + d)"),
-        ("add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))", "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))"),
+        (
+            "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+            "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+        ),
     ];
 
     for (input, want) in tests {
