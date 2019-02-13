@@ -161,6 +161,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(_) => self.parse_identifier(),
             Token::Integer { .. } => self.parse_integer_literal(),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::True | Token::False => self.parse_boolean_literal(),
 
             // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
@@ -214,6 +215,18 @@ impl<'a> Parser<'a> {
                 want: "integer".to_string(),
                 got: format!("{}", &self.current),
             })
+        }
+    }
+
+    /// Parses a boolean literal expression.
+    fn parse_boolean_literal(&self) -> Result<ast::Expression> {
+        match &self.current {
+            Token::True => Ok(ast::Expression::Boolean(true)),
+            Token::False => Ok(ast::Expression::Boolean(false)),
+            _ => Err(Error::UnexpectedToken {
+                want: "boolean".to_string(),
+                got: format!("{}", &self.current),
+            }),
         }
     }
 
