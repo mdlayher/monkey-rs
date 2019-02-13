@@ -14,7 +14,7 @@ fn main() -> Result<(), String> {
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "print this help menu");
-    opts.optflag("l", "lex", "only perform the lexing process");
+    opts.optflag("l", "lex", "display tokens produced by the lexer");
 
     let matches = opts.parse(&args[1..]).map_err(|err| err.to_string())?;
 
@@ -28,10 +28,8 @@ fn main() -> Result<(), String> {
     // Pass all free arguments to the lexer and parser.
     let program = matches.free.join(" ");
 
-    lex(&program)?;
-
     if matches.opt_present("l") {
-        return Ok(());
+        lex(&program)?;
     }
 
     parse(&program)?;
@@ -55,16 +53,17 @@ fn lex(input: &str) -> Result<(), String> {
                 return Err(format!("illegal token: {}", ill));
             }
             _ => {
-                println!("  - {}", t);
+                println!("  - {:?}", t);
             }
         };
     }
 
+    println!();
     Ok(())
 }
 
 fn parse(input: &str) -> Result<(), String> {
-    println!("\nparser:");
+    println!("parser:");
 
     let mut p = Parser::new(Lexer::new(input)).map_err(|err| err.to_string())?;
 
