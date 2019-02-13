@@ -102,7 +102,7 @@ fn parse_prefix_boolean_expressions() {
         let got_bool = if let ast::Expression::Boolean(b) = &*got.right {
             b
         } else {
-            panic!("not an integer expression");
+            panic!("not a boolean expression");
         };
 
         assert_eq!(want_op, got.operator);
