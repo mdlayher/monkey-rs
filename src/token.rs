@@ -88,14 +88,14 @@ impl fmt::Display for Token {
 }
 
 /// An integer value and its associated radix.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Integer {
     pub radix: Radix,
     pub value: i64,
 }
 
 /// The radix or base of an `Integer`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Radix {
     Binary,
     Decimal,

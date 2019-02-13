@@ -161,15 +161,12 @@ impl<'a> Parser<'a> {
     /// Dispatches the appropriate function to deal with a prefix operator, if
     /// applicable.
     fn prefix_parse(&mut self) -> Result<ast::Expression> {
-        match self.current {
-            Token::Identifier(_) => {
-                let name = self.parse_identifier_name()?;
-                Ok(ast::Expression::Identifier(name))
-            }
-            Token::Integer { .. } => self.parse_integer_literal(),
-            Token::Float(_) => self.parse_float_literal(),
+        match &self.current {
+            Token::Identifier(_) => Ok(ast::Expression::Identifier(self.parse_identifier_name()?)),
+            Token::Integer(i) => Ok(ast::Expression::Integer(*i)),
+            Token::Float(f) => Ok(ast::Expression::Float(*f)),
+            b @ Token::True | b @ Token::False => Ok(ast::Expression::Boolean(*b == Token::True)),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
-            Token::True | Token::False => self.parse_boolean_literal(),
             Token::LeftParen => self.parse_grouped_expression(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_literal(),
@@ -213,46 +210,6 @@ impl<'a> Parser<'a> {
                 want: "identifier".to_string(),
                 got: format!("{}", &self.current),
             })
-        }
-    }
-
-    /// Parses an integer literal expression.
-    fn parse_integer_literal(&self) -> Result<ast::Expression> {
-        // Have we found an integer for this expression?
-        if let Token::Integer(int) = &self.current {
-            // If so, return its value.
-            Ok(ast::Expression::Integer(int.clone()))
-        } else {
-            Err(Error::UnexpectedToken {
-                want: "integer".to_string(),
-                got: format!("{}", &self.current),
-            })
-        }
-    }
-
-    /// Parses a float literal expression.
-    fn parse_float_literal(&self) -> Result<ast::Expression> {
-        // Have we found a float for this expression?
-        if let Token::Float(f) = &self.current {
-            // If so, return its value.
-            Ok(ast::Expression::Float(*f))
-        } else {
-            Err(Error::UnexpectedToken {
-                want: "float".to_string(),
-                got: format!("{}", &self.current),
-            })
-        }
-    }
-
-    /// Parses a boolean literal expression.
-    fn parse_boolean_literal(&self) -> Result<ast::Expression> {
-        match &self.current {
-            Token::True => Ok(ast::Expression::Boolean(true)),
-            Token::False => Ok(ast::Expression::Boolean(false)),
-            _ => Err(Error::UnexpectedToken {
-                want: "boolean".to_string(),
-                got: format!("{}", &self.current),
-            }),
         }
     }
 
