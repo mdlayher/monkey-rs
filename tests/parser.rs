@@ -173,6 +173,17 @@ fn parse_infix_boolean_expressions() {
 }
 
 #[test]
+fn parse_if_expressions() {
+    let tests = vec!["if (x < y) { x }", "if (x > y) { x } else { y }"];
+
+    for test in tests {
+        let got = format!("{}", parse(test));
+
+        assert_eq!(test, got);
+    }
+}
+
+#[test]
 fn parse_operator_precedence() {
     let tests = vec![
         ("-a * b", "((-a) * b)"),

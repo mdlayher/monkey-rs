@@ -136,6 +136,21 @@ impl<'a> Parser<'a> {
         Ok(ast::Statement::Expression(expr))
     }
 
+    /// Parses a block statement.
+    fn parse_block_statement(&mut self) -> Result<ast::Statement> {
+        self.next_token()?;
+
+        let mut statements = vec![];
+
+        // Keep consuming statements until end of block or EOF.
+        while self.current != Token::RightBrace && self.current != Token::Eof {
+            statements.push(self.parse_statement()?);
+            self.next_token()?;
+        }
+
+        Ok(ast::Statement::Block(ast::BlockStatement { statements }))
+    }
+
     /// Parses an expression.
     fn parse_expression(&mut self, prec: Precedence) -> Result<ast::Expression> {
         let mut left = self.prefix_parse()?;
@@ -163,6 +178,7 @@ impl<'a> Parser<'a> {
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::True | Token::False => self.parse_boolean_literal(),
             Token::LeftParen => self.parse_grouped_expression(),
+            Token::If => self.parse_if_expression(),
 
             // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
@@ -277,6 +293,56 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightParen)?;
 
         Ok(expr)
+    }
+
+    /// Parses an if/else expression.
+    fn parse_if_expression(&mut self) -> Result<ast::Expression> {
+        // Parse the opening of the if statement and conditional.
+        self.expect(Token::LeftParen)?;
+        self.next_token()?;
+
+        let condition = Box::new(self.parse_expression(Precedence::Lowest)?);
+
+        self.expect(Token::RightParen)?;
+        self.expect(Token::LeftBrace)?;
+
+        // Parse the body of the if block.
+        let consequence = if let ast::Statement::Block(block) = self.parse_block_statement()? {
+            block
+        } else {
+            return Err(Error::UnexpectedToken {
+                want: "if block statement".to_string(),
+                got: format!("{}", &self.current),
+            });
+        };
+
+        // Is there an associated else block with this if expression?
+        if self.peek != Token::Else {
+            return Ok(ast::Expression::If(ast::IfExpression {
+                condition,
+                consequence,
+                alternative: None,
+            }));
+        }
+
+        // Parse the body of the else block.
+        self.next_token()?;
+        self.expect(Token::LeftBrace)?;
+
+        let alternative = if let ast::Statement::Block(block) = self.parse_block_statement()? {
+            Some(block)
+        } else {
+            return Err(Error::UnexpectedToken {
+                want: "else block statement".to_string(),
+                got: format!("{}", &self.current),
+            });
+        };
+
+        Ok(ast::Expression::If(ast::IfExpression {
+            condition,
+            consequence,
+            alternative,
+        }))
     }
 }
 

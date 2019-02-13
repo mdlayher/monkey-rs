@@ -6,7 +6,7 @@ use crate::token;
 use std::fmt;
 
 /// The top level structure of a Monkey program.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Program {
     /// The statements that make up the `Program`.
     pub statements: Vec<Statement>,
@@ -30,34 +30,64 @@ impl fmt::Display for Program {
 }
 
 /// Possible statement types in Monkey.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Statement {
     Expression(Expression),
     Let(LetStatement),
     Return(ReturnStatement),
+    Block(BlockStatement),
 }
 
 impl fmt::Display for Statement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Statement::Expression(stmt) => stmt.fmt(f),
-            Statement::Let(stmt) => write!(f, "let {} = {};", stmt.name, stmt.value),
-            Statement::Return(stmt) => write!(f, "return {};", stmt.value),
+            Statement::Let(stmt) => stmt.fmt(f),
+            Statement::Return(stmt) => stmt.fmt(f),
+            Statement::Block(stmt) => stmt.fmt(f),
         }
     }
 }
 
 /// A statement that binds an expression to an identifier.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
 }
 
+impl fmt::Display for LetStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "let {} = {};", self.name, self.value)
+    }
+}
+
 /// A statement that returns a value.
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReturnStatement {
     pub value: Expression,
+}
+
+impl fmt::Display for ReturnStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "return {};", self.value)
+    }
+}
+
+/// A statement produced by a block.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlockStatement {
+    pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for BlockStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.statements {
+            stmt.fmt(f)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// A computed expression.
@@ -71,6 +101,7 @@ pub enum Expression {
     Boolean(bool),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
+    If(IfExpression),
 }
 
 impl fmt::Display for Expression {
@@ -82,6 +113,7 @@ impl fmt::Display for Expression {
             Expression::Boolean(b) => b.fmt(f),
             Expression::Prefix(p) => p.fmt(f),
             Expression::Infix(i) => i.fmt(f),
+            Expression::If(i) => i.fmt(f),
         }
     }
 }
@@ -110,5 +142,25 @@ pub struct InfixExpression {
 impl fmt::Display for InfixExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({} {} {})", self.left, self.operator, self.right)
+    }
+}
+
+/// An expression comprised of an if/else block.
+#[derive(Clone, Debug, PartialEq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl fmt::Display for IfExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "if {} {{ {} }}", self.condition, self.consequence)?;
+
+        if let Some(alt) = &self.alternative {
+            write!(f, " else {{ {} }}", alt)?;
+        }
+
+        Ok(())
     }
 }
