@@ -52,6 +52,15 @@ fn eval_prefix_expression(p: ast::PrefixExpression, err_node: ast::Node) -> Resu
             // 5 == true, so !5 == false.
             _ => Ok(Object::Boolean(false)),
         },
+        // Negative numbers.
+        Token::Minus => match right {
+            Object::Integer(i) => Ok(Object::Integer(-i)),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "cannot negate non-integer value".to_string(),
+            )),
+        },
 
         _ => Err(Error::Evaluation(
             err_node,

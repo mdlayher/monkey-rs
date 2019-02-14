@@ -4,7 +4,7 @@ use mdl_monkey::{ast, evaluator, lexer, object, parser};
 
 #[test]
 fn evaluate_integer_expression() {
-    let tests = vec![("5", 5), ("10", 10)];
+    let tests = vec![("5", 5), ("10", 10), ("-5", -5), ("-10", -10)];
 
     for (input, want) in tests {
         let got = if let object::Object::Integer(int) = eval(input) {
