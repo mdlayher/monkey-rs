@@ -32,6 +32,28 @@ fn evaluate_boolean_expression() {
     }
 }
 
+#[test]
+fn evaluate_prefix_expression() {
+    let tests = vec![
+        ("!true", false),
+        ("!false", true),
+        ("!5", false),
+        ("!!true", true),
+        ("!!false", false),
+        ("!!5", true),
+    ];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Boolean(b) = eval(input) {
+            b
+        } else {
+            panic!("not a boolean object");
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     let l = lexer::Lexer::new(input);
 

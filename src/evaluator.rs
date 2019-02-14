@@ -3,6 +3,7 @@
 
 use crate::ast;
 use crate::object::Object;
+use crate::token::Token;
 
 use std::error;
 use std::fmt;
@@ -27,11 +28,35 @@ pub fn eval(node: ast::Node) -> Result<Object> {
         ast::Node::Expression(expr) => match expr {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
+            ast::Expression::Prefix(p) => eval_prefix_expression(p, err_node),
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled expression type".to_string(),
             )),
         },
+    }
+}
+
+/// Evaluates a prefix expression to produce an Object.
+fn eval_prefix_expression(p: ast::PrefixExpression, err_node: ast::Node) -> Result<Object> {
+    // Evaluate the right side before applying the prefix operator.
+    let right = eval(ast::Node::Expression(*p.right))?;
+
+    match p.operator {
+        // Logical negation.
+        Token::Bang => match right {
+            // Negate the input boolean.
+            Object::Boolean(b) => Ok(Object::Boolean(!b)),
+            // !null == true.
+            Object::Null => Ok(Object::Boolean(true)),
+            // 5 == true, so !5 == false.
+            _ => Ok(Object::Boolean(false)),
+        },
+
+        _ => Err(Error::Evaluation(
+            err_node,
+            "unhandled prefix operator".to_string(),
+        )),
     }
 }
 
