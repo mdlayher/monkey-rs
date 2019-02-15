@@ -4,7 +4,19 @@ use mdl_monkey::{ast, evaluator, lexer, object, parser};
 
 #[test]
 fn evaluate_integer_expression() {
-    let tests = vec![("5", 5), ("10", 10), ("-5", -5), ("-10", -10)];
+    let tests = vec![
+        ("5", 5),
+        ("10", 10),
+        ("-5", -5),
+        ("-10", -10),
+        ("5 + 5 + 5 + 5 - 10", 10),
+        ("2 * 2 * 2 *2 * 2", 32),
+        ("-50 + 100 + -50", 0),
+        ("50 / 2 * 2 + 10", 60),
+        ("2 * (5 + 10)", 30),
+        ("(5 + 10 * 2 + 15 / 3) * 2 + -10", 50),
+        ("4 % 3", 1),
+    ];
 
     for (input, want) in tests {
         let got = if let object::Object::Integer(int) = eval(input) {
@@ -19,7 +31,21 @@ fn evaluate_integer_expression() {
 
 #[test]
 fn evaluate_boolean_expression() {
-    let tests = vec![("true", true), ("false", false)];
+    let tests = vec![
+        ("true", true),
+        ("false", false),
+        ("true == true", true),
+        ("false == false", true),
+        ("true == false", false),
+        ("true != false", true),
+        ("false != true", true),
+        ("(1 == 1) == true", true),
+        ("(1 != 2) == true", true),
+        ("(1 < 2) == true", true),
+        ("(1 < 2) == false", false),
+        ("(1 > 2) == true", false),
+        ("(1 > 2) == false", true),
+    ];
 
     for (input, want) in tests {
         let got = if let object::Object::Boolean(b) = eval(input) {

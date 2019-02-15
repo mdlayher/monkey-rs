@@ -29,6 +29,7 @@ pub fn eval(node: ast::Node) -> Result<Object> {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
             ast::Expression::Prefix(p) => eval_prefix_expression(p, err_node),
+            ast::Expression::Infix(i) => eval_infix_expression(i, err_node),
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled expression type".to_string(),
@@ -38,11 +39,11 @@ pub fn eval(node: ast::Node) -> Result<Object> {
 }
 
 /// Evaluates a prefix expression to produce an Object.
-fn eval_prefix_expression(p: ast::PrefixExpression, err_node: ast::Node) -> Result<Object> {
+fn eval_prefix_expression(expr: ast::PrefixExpression, err_node: ast::Node) -> Result<Object> {
     // Evaluate the right side before applying the prefix operator.
-    let right = eval(ast::Node::Expression(*p.right))?;
+    let right = eval(ast::Node::Expression(*expr.right))?;
 
-    match p.operator {
+    match expr.operator {
         // Logical negation.
         Token::Bang => match right {
             // Negate the input boolean.
@@ -65,6 +66,48 @@ fn eval_prefix_expression(p: ast::PrefixExpression, err_node: ast::Node) -> Resu
         _ => Err(Error::Evaluation(
             err_node,
             "unhandled prefix operator".to_string(),
+        )),
+    }
+}
+
+/// Evaluates an infix expression to produce an Object.
+fn eval_infix_expression(expr: ast::InfixExpression, err_node: ast::Node) -> Result<Object> {
+    let left = eval(ast::Node::Expression(*expr.left))?;
+    let right = eval(ast::Node::Expression(*expr.right))?;
+
+    // Left and right types must match.
+    match (left, right) {
+        (Object::Integer(l), Object::Integer(r)) => match expr.operator {
+            Token::Plus => Ok(Object::Integer(l + r)),
+            Token::Minus => Ok(Object::Integer(l - r)),
+            Token::Asterisk => Ok(Object::Integer(l * r)),
+            Token::Slash => Ok(Object::Integer(l / r)),
+            Token::Percent => Ok(Object::Integer(l % r)),
+
+            Token::LessThan => Ok(Object::Boolean(l < r)),
+            Token::GreaterThan => Ok(Object::Boolean(l > r)),
+            Token::Equal => Ok(Object::Boolean(l == r)),
+            Token::NotEqual => Ok(Object::Boolean(l != r)),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled integer infix operator".to_string(),
+            )),
+        },
+
+        (Object::Boolean(l), Object::Boolean(r)) => match expr.operator {
+            Token::Equal => Ok(Object::Boolean(l == r)),
+            Token::NotEqual => Ok(Object::Boolean(l != r)),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled boolean infix operator".to_string(),
+            )),
+        },
+
+        _ => Err(Error::Evaluation(
+            err_node,
+            "unhandled or mismatched infix expression types".to_string(),
         )),
     }
 }
