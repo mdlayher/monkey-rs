@@ -14,10 +14,13 @@ pub fn eval(node: ast::Node) -> Result<Object> {
     // TODO(mdlayher): clean up error handling via err_node.
     let err_node = node.clone();
     match node {
-        ast::Node::Program(prog) => eval_statements(&prog.statements),
+        ast::Node::Program(prog) => eval_program(prog),
         ast::Node::Statement(stmt) => match stmt {
-            ast::Statement::Block(block) => eval_statements(&block.statements),
+            ast::Statement::Block(block) => eval_block_statement(block),
             ast::Statement::Expression(expr) => eval(ast::Node::Expression(expr)),
+            ast::Statement::Return(ret) => Ok(Object::ReturnValue(Box::new(eval(
+                ast::Node::Expression(ret.value),
+            )?))),
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled statement type".to_string(),
@@ -37,12 +40,36 @@ pub fn eval(node: ast::Node) -> Result<Object> {
     }
 }
 
-/// Evaluates statements and returns the result of the last statement.
-fn eval_statements(stmts: &[ast::Statement]) -> Result<Object> {
+/// Evaluates a program and returns the result.
+fn eval_program(prog: ast::Program) -> Result<Object> {
     let mut result = Object::Null;
 
-    for stmt in stmts {
+    for stmt in prog.statements {
         result = eval(ast::Node::Statement(stmt.clone()))?;
+
+        // Handle early return statements if applicable, unwrapping the inner
+        // value and terminating the program.
+        if let Object::ReturnValue(value) = result {
+            return Ok(*value);
+        }
+    }
+
+    Ok(result)
+}
+
+/// Evaluates a block statement and returns the result.
+fn eval_block_statement(block: ast::BlockStatement) -> Result<Object> {
+    let mut result = Object::Null;
+
+    for stmt in block.statements {
+        result = eval(ast::Node::Statement(stmt.clone()))?;
+
+        // Handle early return statements if applicable, but do not unwrap the
+        // inner value so that only this block statement terminates, and not
+        // the entire program.
+        if let Object::ReturnValue(_) = result {
+            return Ok(result);
+        }
     }
 
     Ok(result)

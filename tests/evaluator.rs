@@ -101,6 +101,33 @@ fn evaluate_if_expression() {
     }
 }
 
+#[test]
+fn evaluate_return_statement() {
+    let tests = vec![
+        "return 10;",
+        "return 10; 9;",
+        "return 2 * 5; 9",
+        "9; return 2 * 5; 9;",
+        "if (10 > 1) {
+            if (10 > 1) {
+                return 10;
+            }
+
+            return 1;
+        }",
+    ];
+
+    for input in tests {
+        let got = if let object::Object::Integer(int) = eval(input) {
+            int
+        } else {
+            panic!("not an integer object");
+        };
+
+        assert_eq!(10, got);
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     let l = lexer::Lexer::new(input);
 
