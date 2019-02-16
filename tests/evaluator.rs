@@ -80,6 +80,27 @@ fn evaluate_prefix_expression() {
     }
 }
 
+#[test]
+fn evaluate_if_expression() {
+    let ten = object::Object::Integer(10);
+    let twenty = object::Object::Integer(20);
+    let null = object::Object::Null;
+
+    let tests = vec![
+        ("if (true) { 10 }", &ten),
+        ("if (false) { 10 }", &null),
+        ("if (1) { 10 }", &ten),
+        ("if (1 < 2) { 10 }", &ten),
+        ("if (1 > 2) { 10 }", &null),
+        ("if (1 < 2) { 10 } else { 20 }", &ten),
+        ("if (1 > 2) { 10 } else { 20 }", &twenty),
+    ];
+
+    for (input, want) in tests {
+        assert_eq!(want, &eval(input));
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     let l = lexer::Lexer::new(input);
 

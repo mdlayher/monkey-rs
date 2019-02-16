@@ -14,11 +14,9 @@ pub fn eval(node: ast::Node) -> Result<Object> {
     // TODO(mdlayher): clean up error handling via err_node.
     let err_node = node.clone();
     match node {
-        ast::Node::Program(prog) => {
-            // TODO(mdlayher): evaluate more statements in the program.
-            eval(ast::Node::Statement(prog.statements[0].clone()))
-        }
+        ast::Node::Program(prog) => eval_statements(&prog.statements),
         ast::Node::Statement(stmt) => match stmt {
+            ast::Statement::Block(block) => eval_statements(&block.statements),
             ast::Statement::Expression(expr) => eval(ast::Node::Expression(expr)),
             _ => Err(Error::Evaluation(
                 err_node,
@@ -30,12 +28,24 @@ pub fn eval(node: ast::Node) -> Result<Object> {
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
             ast::Expression::Prefix(p) => eval_prefix_expression(p, err_node),
             ast::Expression::Infix(i) => eval_infix_expression(i, err_node),
+            ast::Expression::If(stmt) => eval_if_expression(stmt),
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled expression type".to_string(),
             )),
         },
     }
+}
+
+/// Evaluates statements and returns the result of the last statement.
+fn eval_statements(stmts: &[ast::Statement]) -> Result<Object> {
+    let mut result = Object::Null;
+
+    for stmt in stmts {
+        result = eval(ast::Node::Statement(stmt.clone()))?;
+    }
+
+    Ok(result)
 }
 
 /// Evaluates a prefix expression to produce an Object.
@@ -109,6 +119,29 @@ fn eval_infix_expression(expr: ast::InfixExpression, err_node: ast::Node) -> Res
             err_node,
             "unhandled or mismatched infix expression types".to_string(),
         )),
+    }
+}
+
+/// Evaluates an if/else expression to produce an Object.
+fn eval_if_expression(expr: ast::IfExpression) -> Result<Object> {
+    let condition = eval(ast::Node::Expression(*expr.condition))?;
+
+    if is_truthy(&condition) {
+        eval(ast::Node::Statement(ast::Statement::Block(
+            expr.consequence,
+        )))
+    } else if let Some(alt) = expr.alternative {
+        eval(ast::Node::Statement(ast::Statement::Block(alt)))
+    } else {
+        Ok(Object::Null)
+    }
+}
+
+/// Determines if an object is truthy in Monkey.
+fn is_truthy(obj: &Object) -> bool {
+    match obj {
+        Object::Boolean(false) | Object::Null => false,
+        Object::Boolean(true) | _ => true,
     }
 }
 
