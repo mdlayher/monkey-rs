@@ -165,6 +165,7 @@ impl<'a> Parser<'a> {
             Token::Identifier(_) => Ok(ast::Expression::Identifier(self.parse_identifier_name()?)),
             Token::Integer(i) => Ok(ast::Expression::Integer(*i)),
             Token::Float(f) => Ok(ast::Expression::Float(*f)),
+            Token::String(s) => Ok(ast::Expression::String(s.to_string())),
             b @ Token::True | b @ Token::False => Ok(ast::Expression::Boolean(*b == Token::True)),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LeftParen => self.parse_grouped_expression(),

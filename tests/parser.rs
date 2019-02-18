@@ -71,6 +71,23 @@ fn parse_float_literal_expression() {
 }
 
 #[test]
+fn parse_string_expression() {
+    let prog = parse(r#""hello world""#);
+
+    assert_eq!(prog.statements.len(), 1);
+
+    let want = "hello world";
+
+    let got = if let ast::Statement::Expression(ast::Expression::String(s)) = &prog.statements[0] {
+        s
+    } else {
+        panic!("not a string expression");
+    };
+
+    assert_eq!(want, got);
+}
+
+#[test]
 fn parse_prefix_integer_expressions() {
     let tests = vec![
         ("!5;", token::Token::Bang, 5),
