@@ -30,6 +30,28 @@ fn evaluate_integer_expression() {
 }
 
 #[test]
+fn evaluate_float_expression() {
+    let tests = vec![
+        ("0.1", 0.1),
+        ("-1.0 + 0.1", -0.9),
+        ("1.0 - 1.0", 0.0),
+        ("1.0 * 2.0", 2.0),
+        ("0.1 / 10.0", 0.01),
+        ("4.0 % 3.0", 1.0),
+    ];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Float(float) = eval(input) {
+            float
+        } else {
+            panic!("not a float object");
+        };
+
+        assert!((want - got).abs() < std::f64::EPSILON);
+    }
+}
+
+#[test]
 fn evaluate_boolean_expression() {
     let tests = vec![
         ("true", true),

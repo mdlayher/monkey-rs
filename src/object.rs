@@ -11,6 +11,7 @@ use std::fmt;
 pub enum Object {
     Null,
     Integer(i64),
+    Float(f64),
     Boolean(bool),
     ReturnValue(Box<Object>),
     Function(Function),
@@ -21,6 +22,7 @@ impl fmt::Display for Object {
         match self {
             Object::Null => write!(f, "null"),
             Object::Integer(i) => i.fmt(f),
+            Object::Float(fl) => fl.fmt(f),
             Object::Boolean(b) => b.fmt(f),
             Object::ReturnValue(r) => write!(f, "return({})", r),
             Object::Function(func) => func.fmt(f),

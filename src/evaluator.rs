@@ -33,6 +33,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
         ast::Node::Expression(expr) => match expr {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
+            ast::Expression::Float(f) => Ok(Object::Float(f)),
             ast::Expression::Prefix(p) => eval_prefix_expression(p, env, err_node),
             ast::Expression::Infix(i) => eval_infix_expression(i, env, err_node),
             ast::Expression::If(stmt) => eval_if_expression(stmt, env),
@@ -61,11 +62,6 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
 
                 apply_function(function, args)
             }
-
-            _ => Err(Error::Evaluation(
-                err_node,
-                "unhandled expression type".to_string(),
-            )),
         },
     }
 }
@@ -130,10 +126,11 @@ fn eval_prefix_expression(
         // Negative numbers.
         Token::Minus => match right {
             Object::Integer(i) => Ok(Object::Integer(-i)),
+            Object::Float(f) => Ok(Object::Float(-f)),
 
             _ => Err(Error::Evaluation(
                 err_node,
-                "cannot negate non-integer value".to_string(),
+                "cannot negate non-numeric value".to_string(),
             )),
         },
 
@@ -170,6 +167,19 @@ fn eval_infix_expression(
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled integer infix operator".to_string(),
+            )),
+        },
+
+        (Object::Float(l), Object::Float(r)) => match expr.operator {
+            Token::Plus => Ok(Object::Float(l + r)),
+            Token::Minus => Ok(Object::Float(l - r)),
+            Token::Asterisk => Ok(Object::Float(l * r)),
+            Token::Slash => Ok(Object::Float(l / r)),
+            Token::Percent => Ok(Object::Float(l % r)),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled float infix operator".to_string(),
             )),
         },
 
