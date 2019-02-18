@@ -262,6 +262,26 @@ apply(add, 2, 2);
 }
 
 #[test]
+fn evaluate_function_application_error() {
+    // Try to invoke add with one parameter in the body of apply.
+    let err = eval_result(
+        "
+let add = fn(x, y) { x + y };
+let apply = fn(func, x, y) { func(x) };
+apply(add, 2, 2);
+",
+    )
+    .expect_err("expected an error but none was found");;
+
+    if let evaluator::Error::Evaluation(node, _) = err {
+        // Pinpoint the error.
+        assert_eq!("func(x)", format!("{}", node));
+    } else {
+        panic!("expected evaluation error");
+    }
+}
+
+#[test]
 fn evaluate_builtin_len() {
     let tests = vec![
         (r#"len("")"#, 0),

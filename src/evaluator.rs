@@ -64,7 +64,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                     }
                 };
 
-                apply_function(function, &args)
+                apply_function(function, &args, err_node)
             }
         },
     }
@@ -289,9 +289,13 @@ fn eval_expressions(
 }
 
 /// Applies a function with arguments to produce a result object.
-fn apply_function(function: object::Function, args: &[Object]) -> Result<Object> {
+fn apply_function(
+    function: object::Function,
+    args: &[Object],
+    err_node: ast::Node,
+) -> Result<Object> {
     // Bind function arguments in an enclosed environment.
-    let mut extended_env = extend_function_env(&function, &args);
+    let mut extended_env = extend_function_env(&function, &args, err_node)?;
     let evaluated = eval(
         ast::Node::Statement(ast::Statement::Block(function.body)),
         &mut extended_env,
@@ -306,14 +310,29 @@ fn apply_function(function: object::Function, args: &[Object]) -> Result<Object>
 }
 
 // Extends a function's environment to bind its arguments.
-fn extend_function_env(func: &object::Function, args: &[Object]) -> object::Environment {
+fn extend_function_env(
+    func: &object::Function,
+    args: &[Object],
+    err_node: ast::Node,
+) -> Result<object::Environment> {
+    if func.parameters.len() != args.len() {
+        return Err(Error::Evaluation(
+            err_node,
+            format!(
+                "expected {} parameters to call function, but got {}",
+                func.parameters.len(),
+                args.len()
+            ),
+        ));
+    }
+
     let mut env = object::Environment::new_enclosed(func.env.clone());
 
     for (i, param) in func.parameters.iter().enumerate() {
         env.set(param.to_string(), &args[i]);
     }
 
-    env
+    Ok(env)
 }
 
 /// Determines if an object is truthy in Monkey.
