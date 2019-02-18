@@ -87,6 +87,7 @@ impl<'a> Lexer<'a> {
             ')' => Token::RightParen,
             '{' => Token::LeftBrace,
             '}' => Token::RightBrace,
+            '"' => self.read_string()?,
             '\u{0000}' => Token::Eof,
 
             _ => {
@@ -190,6 +191,32 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    // Reads a string literal.
+    fn read_string(&mut self) -> Result<Token> {
+        let pos = self.position + 1;
+
+        // Read characters until end quote or EOF.
+        loop {
+            self.read_char();
+
+            match self.ch {
+                '"' => break,
+                '\u{0000}' => {
+                    return Err(Error::UnexpectedEof);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Token::String(
+            self.input
+                .chars()
+                .skip(pos)
+                .take(self.position - pos)
+                .collect(),
+        ))
+    }
+
     // Advances the lexer until all contiguous whitespace is consumed.
     fn skip_whitespace(&mut self) {
         while self.ch.is_ascii_whitespace() {
@@ -272,6 +299,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// Specifies the different classes of errors which may occur.
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    UnexpectedEof,
     IllegalFloat(num::ParseFloatError),
     IllegalIntegerRadix(char),
     IllegalInteger(num::ParseIntError),
@@ -280,6 +308,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::UnexpectedEof => write!(f, "unexpected EOF"),
             Error::IllegalFloat(err) => write!(f, "illegal floating point number: {}", err),
             Error::IllegalIntegerRadix(r) => write!(f, "illegal number radix: {}", r),
             Error::IllegalInteger(err) => write!(f, "illegal integer number: {}", err),

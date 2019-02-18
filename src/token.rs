@@ -15,6 +15,7 @@ pub enum Token {
     Identifier(String),
     Integer(Integer),
     Float(f64),
+    String(String),
 
     // Operators.
     Assign,
@@ -56,6 +57,7 @@ impl fmt::Display for Token {
             Token::Identifier(s) => write!(f, "identifier({})", s),
             Token::Integer(i) => i.fmt(f),
             Token::Float(fl) => fl.fmt(f),
+            Token::String(s) => s.fmt(f),
 
             Token::Assign => write!(f, "="),
             Token::Plus => write!(f, "+"),

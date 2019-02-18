@@ -6,7 +6,7 @@ use mdl_monkey::token::{Integer, Radix, Token};
 #[test]
 fn lex_next_token() {
     let got = Lexer::new(
-        "
+        r#"
 let five = 5;
 let ten = 10;
 
@@ -29,7 +29,9 @@ if (5 < 10) {
 10 != 9;
 1.01 2.
 4 % 2
-",
+"foobar"
+"foo bar"
+"#,
     )
     .lex()
     .expect("failed to lex tokens");
@@ -167,6 +169,9 @@ if (5 < 10) {
             value: 2,
         }),
         //
+        Token::String("foobar".to_string()),
+        Token::String("foo bar".to_string()),
+        //
         Token::Eof,
     ];
 
@@ -239,6 +244,15 @@ fn lex_illegal_number_radix() {
         .expect_err("expected illegal radix error");
 
     assert_eq!(err, Error::IllegalIntegerRadix('q'));
+}
+
+#[test]
+fn lex_string_unexpected_eof() {
+    let err = Lexer::new(r#""foobar "#)
+        .lex()
+        .expect_err("expected unexpected EOF error");
+
+    assert_eq!(err, Error::UnexpectedEof);
 }
 
 fn assert_tokens_equal(want: &[Token], got: &[Token]) {
