@@ -1,4 +1,7 @@
 language: rust
+os:
+  - linux
+dist: xenial
 rust:
   - stable
 before_script:
