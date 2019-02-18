@@ -3,9 +3,11 @@
 
 use crate::ast;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
+use std::rc::Rc;
 use std::result;
 
 /// Objects produced when evaluating Monkey source code, along with their
@@ -45,18 +47,28 @@ pub struct Environment {
 }
 
 impl Environment {
-    /// Creates a new `Environment`.
-    pub fn new() -> Self {
-        Environment {
+    /// Creates a new `Environment` suitable for passing to `evaluator::Eval`.
+    pub fn new() -> Rc<RefCell<Self>> {
+        // The Rc and RefCell wrappers are necessary in order to enable
+        // reference counting and interior mutability on an Environment.
+        //
+        // Environments are passed around to many functions in Eval which may
+        // or may not need to clone or mutate the data inside.  Using Rc and
+        // RefCell enables us to share a single Environment to enable use cases
+        // such as recursive function calls.
+        //
+        // Thanks, Paul Dix for the inspiration:
+        // https://www.influxdata.com/blog/rust-can-be-difficult-to-learn-and-frustrating-but-its-also-the-most-exciting-thing-in-software-development-in-a-long-time/.
+        Rc::new(RefCell::new(Environment {
             store: HashMap::new(),
             outer: None,
-        }
+        }))
     }
 
     /// Creates an enclosed `Environment` for use within a function call.
-    pub fn new_enclosed(outer: Self) -> Self {
-        let mut env = Self::new();
-        env.outer = Some(Box::new(outer));
+    pub fn new_enclosed(outer: Rc<RefCell<Self>>) -> Rc<RefCell<Self>> {
+        let env = Self::new();
+        env.borrow_mut().outer = Some(Box::new(outer.borrow().clone()));
         env
     }
 
@@ -86,7 +98,7 @@ impl Environment {
 pub struct Function {
     pub parameters: Vec<String>,
     pub body: ast::BlockStatement,
-    pub env: Environment,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl fmt::Display for Function {

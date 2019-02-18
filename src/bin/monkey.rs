@@ -85,9 +85,9 @@ fn eval(node: ast::Node) -> Result<(), String> {
     println!("eval:");
 
     // TODO(mdlayher): turn this into a real REPL and share env.
-    let mut env = Environment::new();
+    let env = Environment::new();
 
-    let obj = evaluator::eval(node, &mut env).map_err(|err| err.to_string())?;
+    let obj = evaluator::eval(node, env).map_err(|err| err.to_string())?;
     println!("  - {}", obj);
 
     Ok(())
