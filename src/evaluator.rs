@@ -212,6 +212,15 @@ fn eval_infix_expression(
             )),
         },
 
+        (Object::String(l), Object::String(r)) => match expr.operator {
+            Token::Plus => Ok(Object::String(l + &r)),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled string infix operator".to_string(),
+            )),
+        },
+
         _ => Err(Error::Evaluation(
             err_node,
             "unhandled or mismatched infix expression types".to_string(),

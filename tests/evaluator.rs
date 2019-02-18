@@ -87,13 +87,17 @@ fn evaluate_boolean_expression() {
 
 #[test]
 fn evaluate_string_expression() {
-    let got = if let object::Object::String(s) = eval(r#""hello world""#) {
-        s
-    } else {
-        panic!("not a string object");
-    };
+    let tests = vec![r#""hello world""#, r#""hello" + " " + "world""#];
 
-    assert_eq!("hello world", got);
+    for input in tests {
+        let got = if let object::Object::String(s) = eval(input) {
+            s
+        } else {
+            panic!("not a string object");
+        };
+
+        assert_eq!("hello world", got);
+    }
 }
 
 #[test]
