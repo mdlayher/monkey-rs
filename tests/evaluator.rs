@@ -287,8 +287,8 @@ fn evaluate_builtin_len_errors() {
     for input in tests {
         let err = eval_result(input).expect_err("expected an error but none was found");
 
-        if let evaluator::Error::Object(object::Error::Builtin(_, _)) = err {
-            // Error was of the type we expected.
+        if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
+            assert_eq!(object::Builtin::Len, b);
         } else {
             panic!("not a built-in object error");
         }
