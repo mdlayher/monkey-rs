@@ -13,6 +13,7 @@ pub enum Object {
     Integer(i64),
     Float(f64),
     Boolean(bool),
+    String(String),
     ReturnValue(Box<Object>),
     Function(Function),
 }
@@ -24,6 +25,7 @@ impl fmt::Display for Object {
             Object::Integer(i) => i.fmt(f),
             Object::Float(fl) => fl.fmt(f),
             Object::Boolean(b) => b.fmt(f),
+            Object::String(s) => s.fmt(f),
             Object::ReturnValue(r) => write!(f, "return({})", r),
             Object::Function(func) => func.fmt(f),
         }

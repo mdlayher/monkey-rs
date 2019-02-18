@@ -86,6 +86,17 @@ fn evaluate_boolean_expression() {
 }
 
 #[test]
+fn evaluate_string_expression() {
+    let got = if let object::Object::String(s) = eval(r#""hello world""#) {
+        s
+    } else {
+        panic!("not a string object");
+    };
+
+    assert_eq!("hello world", got);
+}
+
+#[test]
 fn evaluate_prefix_expression() {
     let tests = vec![
         ("!true", false),
