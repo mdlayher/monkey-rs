@@ -32,6 +32,7 @@ impl fmt::Display for Object {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Environment {
     store: HashMap<String, Object>,
+    outer: Option<Box<Environment>>,
 }
 
 impl Environment {
@@ -39,13 +40,29 @@ impl Environment {
     pub fn new() -> Self {
         Environment {
             store: HashMap::new(),
+            outer: None,
         }
+    }
+
+    /// Creates an enclosed `Environment` for use within a function call.
+    pub fn new_enclosed(outer: Self) -> Self {
+        let mut env = Self::new();
+        env.outer = Some(Box::new(outer));
+        env
     }
 
     /// Retrieves the object associated with an identifier name, or returns
     /// `None` if no object is associated with `name`.
     pub fn get(&self, name: &str) -> Option<&Object> {
-        self.store.get(name)
+        match (self.store.get(name), &self.outer) {
+            // We found a binding in this environment; no need to consult the
+            // outer environment.
+            (Some(obj), _) => Some(obj),
+            // We did not find a binding; try the outer environment.
+            (None, Some(outer)) => outer.get(name),
+            // We found no binding and there is no outer environment.
+            (None, _) => None,
+        }
     }
 
     /// Binds an object in the environment with the identifier `name`.

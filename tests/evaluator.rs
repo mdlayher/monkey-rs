@@ -177,6 +177,48 @@ fn evaluate_function_object() {
     assert_eq!("(x + 2)", format!("{}", got.body));
 }
 
+#[test]
+fn evaluate_function_application() {
+    let tests = vec![
+        ("let identity = fn(x) { x; }; identity(5);", 5),
+        ("let identity = fn(x) { return x; }; identity(5);", 5),
+        ("let double = fn(x) { x * 2; }; double(5);", 10),
+        ("let add = fn(x, y) { x + y; } add(5, 5);", 10),
+        ("fn(x) { x; }(5)", 5),
+        // Closures also work!
+        (
+            "
+let newAdder = fn(x) {
+    fn(y) { x + y };
+};
+
+let addTwo = newAdder(2);
+addTwo(2);
+",
+            4,
+        ),
+        // And higher-order functions!
+        (
+            "
+let add = fn(x, y) { x + y };
+let apply = fn(func, x, y) { func(x, y) };
+apply(add, 2, 2);
+",
+            4,
+        ),
+    ];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Integer(int) = eval(input) {
+            int
+        } else {
+            panic!("not an integer object");
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     eval_result(input).expect("failed to evaluate program")
 }

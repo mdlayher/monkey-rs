@@ -45,6 +45,22 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                 // clone this.
                 env: env.clone(),
             })),
+            ast::Expression::Call(call) => {
+                let function = if let Object::Function(func) =
+                    eval(ast::Node::Expression(*call.function), env)?
+                {
+                    func
+                } else {
+                    return Err(Error::Evaluation(
+                        err_node,
+                        "can only apply functions with function object".to_string(),
+                    ));
+                };
+
+                let args = eval_expressions(call.arguments, env)?;
+
+                apply_function(function, args)
+            }
 
             _ => Err(Error::Evaluation(
                 err_node,
@@ -196,6 +212,48 @@ fn eval_identifier(id: String, env: &mut object::Environment) -> Result<Object> 
         .get(&id)
         .ok_or_else(|| Error::UnknownIdentifier(id))?
         .clone())
+}
+
+/// Evaluates several expressions and produces objects for each of them.
+fn eval_expressions(
+    expressions: Vec<ast::Expression>,
+    env: &mut object::Environment,
+) -> Result<Vec<Object>> {
+    let mut results = vec![];
+
+    for expr in expressions {
+        results.push(eval(ast::Node::Expression(expr), env)?);
+    }
+
+    Ok(results)
+}
+
+/// Applies a function with arguments to produce a result object.
+fn apply_function(function: object::Function, args: Vec<Object>) -> Result<Object> {
+    // Bind function arguments in an enclosed environment.
+    let mut extended_env = extend_function_env(&function, args);
+    let evaluated = eval(
+        ast::Node::Statement(ast::Statement::Block(function.body)),
+        &mut extended_env,
+    )?;
+
+    // If the function had an early return, stop evaluation.
+    if let Object::ReturnValue(ret) = evaluated {
+        Ok(*ret)
+    } else {
+        Ok(evaluated)
+    }
+}
+
+// Extends a function's environment to bind its arguments.
+fn extend_function_env(func: &object::Function, args: Vec<Object>) -> object::Environment {
+    let mut env = object::Environment::new_enclosed(func.env.clone());
+
+    for (i, param) in func.parameters.iter().enumerate() {
+        env.set(param.to_string(), &args[i]);
+    }
+
+    env
 }
 
 /// Determines if an object is truthy in Monkey.
