@@ -37,6 +37,14 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
             ast::Expression::Infix(i) => eval_infix_expression(i, env, err_node),
             ast::Expression::If(stmt) => eval_if_expression(stmt, env),
             ast::Expression::Identifier(id) => eval_identifier(id, env),
+            ast::Expression::Function(func) => Ok(Object::Function(object::Function {
+                parameters: func.parameters,
+                body: func.body,
+
+                // TODO(mdlayher): lifetimes get pretty ugly here if we don't
+                // clone this.
+                env: env.clone(),
+            })),
 
             _ => Err(Error::Evaluation(
                 err_node,

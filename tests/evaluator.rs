@@ -161,6 +161,22 @@ fn evaluate_let_statement_unknown_identifier() {
     }
 }
 
+#[test]
+fn evaluate_function_object() {
+    let input = "fn(x) { x + 2 };";
+
+    let got = if let object::Object::Function(func) = eval(input) {
+        func
+    } else {
+        panic!("not a function object");
+    };
+
+    assert_eq!(1, got.parameters.len());
+    assert_eq!("x", got.parameters[0]);
+
+    assert_eq!("(x + 2)", format!("{}", got.body));
+}
+
 fn eval(input: &str) -> object::Object {
     eval_result(input).expect("failed to evaluate program")
 }
