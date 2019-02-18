@@ -153,12 +153,9 @@ fn eval_infix_expression(
     // Left and right types must match.
     match (left, right) {
         (Object::Integer(l), Object::Integer(r)) => match expr.operator {
-            Token::Plus => Ok(Object::Integer(l + r)),
-            Token::Minus => Ok(Object::Integer(l - r)),
-            Token::Asterisk => Ok(Object::Integer(l * r)),
-            Token::Slash => Ok(Object::Integer(l / r)),
-            Token::Percent => Ok(Object::Integer(l % r)),
-
+            Token::Plus | Token::Minus | Token::Asterisk | Token::Slash | Token::Percent => Ok(
+                Object::Integer(eval_infix_op(expr.operator, l as f64, r as f64) as i64),
+            ),
             Token::LessThan => Ok(Object::Boolean(l < r)),
             Token::GreaterThan => Ok(Object::Boolean(l > r)),
             Token::Equal => Ok(Object::Boolean(l == r)),
@@ -171,15 +168,36 @@ fn eval_infix_expression(
         },
 
         (Object::Float(l), Object::Float(r)) => match expr.operator {
-            Token::Plus => Ok(Object::Float(l + r)),
-            Token::Minus => Ok(Object::Float(l - r)),
-            Token::Asterisk => Ok(Object::Float(l * r)),
-            Token::Slash => Ok(Object::Float(l / r)),
-            Token::Percent => Ok(Object::Float(l % r)),
+            Token::Plus | Token::Minus | Token::Asterisk | Token::Slash | Token::Percent => {
+                Ok(Object::Float(eval_infix_op(expr.operator, l, r)))
+            }
 
             _ => Err(Error::Evaluation(
                 err_node,
                 "unhandled float infix operator".to_string(),
+            )),
+        },
+
+        // TODO(mdlayher): this duplication is a little gross.
+        (Object::Integer(l), Object::Float(r)) => match expr.operator {
+            Token::Plus | Token::Minus | Token::Asterisk | Token::Slash | Token::Percent => Ok(
+                Object::Float(eval_infix_op(expr.operator, l as f64, r as f64)),
+            ),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled integer/float infix operator".to_string(),
+            )),
+        },
+
+        (Object::Float(l), Object::Integer(r)) => match expr.operator {
+            Token::Plus | Token::Minus | Token::Asterisk | Token::Slash | Token::Percent => Ok(
+                Object::Float(eval_infix_op(expr.operator, l as f64, r as f64)),
+            ),
+
+            _ => Err(Error::Evaluation(
+                err_node,
+                "unhandled float/integer infix operator".to_string(),
             )),
         },
 
@@ -197,6 +215,19 @@ fn eval_infix_expression(
             err_node,
             "unhandled or mismatched infix expression types".to_string(),
         )),
+    }
+}
+
+// Evaluates `l (op) r` and returns the result for simple mathematical operations.
+fn eval_infix_op(op: Token, l: f64, r: f64) -> f64 {
+    match op {
+        Token::Plus => l + r,
+        Token::Minus => l - r,
+        Token::Asterisk => l * r,
+        Token::Slash => l / r,
+        Token::Percent => l % r,
+
+        _ => panic!("eval_infix_op called with unsupported operator"),
     }
 }
 
