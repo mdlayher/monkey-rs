@@ -35,6 +35,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
             ast::Expression::Float(f) => Ok(Object::Float(f)),
             ast::Expression::String(s) => Ok(Object::String(s)),
+            ast::Expression::Array(_a) => panic!("unhandled"),
             ast::Expression::Prefix(p) => eval_prefix_expression(p, env, err_node),
             ast::Expression::Infix(i) => eval_infix_expression(i, env, err_node),
             ast::Expression::If(stmt) => eval_if_expression(stmt, env),

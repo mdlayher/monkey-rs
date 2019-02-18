@@ -87,6 +87,8 @@ impl<'a> Lexer<'a> {
             ')' => Token::RightParen,
             '{' => Token::LeftBrace,
             '}' => Token::RightBrace,
+            '[' => Token::LeftBracket,
+            ']' => Token::RightBracket,
             '"' => self.read_string()?,
             '\u{0000}' => Token::Eof,
 

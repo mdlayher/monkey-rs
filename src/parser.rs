@@ -169,6 +169,10 @@ impl<'a> Parser<'a> {
             b @ Token::True | b @ Token::False => Ok(ast::Expression::Boolean(*b == Token::True)),
             Token::Bang | Token::Minus => self.parse_prefix_expression(),
             Token::LeftParen => self.parse_grouped_expression(),
+            Token::LeftBracket => {
+                let elements = self.parse_expression_list(Token::RightBracket)?;
+                Ok(ast::Expression::Array(ast::ArrayLiteral { elements }))
+            }
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_literal(),
 
@@ -366,35 +370,41 @@ impl<'a> Parser<'a> {
     fn parse_call_expression(&mut self, left: &ast::Expression) -> Result<ast::Expression> {
         self.next_token()?;
 
-        // Collect call expression arguments.
-        let mut arguments = vec![];
-
         // Are there zero arguments?
         if self.peek == Token::RightParen {
             self.next_token()?;
             return Ok(ast::Expression::Call(ast::CallExpression {
                 function: Box::new(left.clone()),
-                arguments,
+                arguments: vec![],
             }));
         }
 
-        // Collect the remaining comma-separated arguments.
-        self.next_token()?;
-        arguments.push(self.parse_expression(Precedence::Lowest)?);
-
-        while self.peek == Token::Comma {
-            self.next_token()?;
-            self.next_token()?;
-
-            arguments.push(self.parse_expression(Precedence::Lowest)?);
-        }
-
-        self.expect(Token::RightParen)?;
+        let arguments = self.parse_expression_list(Token::RightParen)?;
 
         Ok(ast::Expression::Call(ast::CallExpression {
             function: Box::new(left.clone()),
             arguments,
         }))
+    }
+
+    /// Parses expressions until `end` is encountered.
+    fn parse_expression_list(&mut self, end: Token) -> Result<Vec<ast::Expression>> {
+        let mut expressions = vec![];
+
+        // Collect the remaining comma-separated expressions.
+        self.next_token()?;
+        expressions.push(self.parse_expression(Precedence::Lowest)?);
+
+        while self.peek == Token::Comma {
+            self.next_token()?;
+            self.next_token()?;
+
+            expressions.push(self.parse_expression(Precedence::Lowest)?);
+        }
+
+        self.expect(end)?;
+
+        Ok(expressions)
     }
 }
 

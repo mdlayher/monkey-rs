@@ -116,6 +116,7 @@ pub enum Expression {
     Float(f64),
     Boolean(bool),
     String(String),
+    Array(ArrayLiteral),
     Prefix(PrefixExpression),
     Infix(InfixExpression),
     If(IfExpression),
@@ -132,11 +133,32 @@ impl fmt::Display for Expression {
             Expression::Boolean(b) => b.fmt(f),
             Expression::Prefix(p) => p.fmt(f),
             Expression::String(s) => s.fmt(f),
+            Expression::Array(a) => a.fmt(f),
             Expression::Infix(i) => i.fmt(f),
             Expression::If(i) => i.fmt(f),
             Expression::Function(fl) => fl.fmt(f),
             Expression::Call(c) => c.fmt(f),
         }
+    }
+}
+
+/// An array of objects.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayLiteral {
+    pub elements: Vec<Expression>,
+}
+
+impl fmt::Display for ArrayLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[{}]",
+            self.elements
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 

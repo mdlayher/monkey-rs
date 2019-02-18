@@ -88,6 +88,25 @@ fn parse_string_expression() {
 }
 
 #[test]
+fn parse_array_literal() {
+    let prog = parse("[1, 2 * 2, !true]");
+
+    assert_eq!(prog.statements.len(), 1);
+
+    let array = if let ast::Statement::Expression(ast::Expression::Array(a)) = &prog.statements[0] {
+        a
+    } else {
+        panic!("not an array literal expression");
+    };
+
+    assert_eq!(array.elements.len(), 3);
+
+    assert_eq!("1", format!("{}", array.elements[0]));
+    assert_eq!("(2 * 2)", format!("{}", array.elements[1]));
+    assert_eq!("(!true)", format!("{}", array.elements[2]));
+}
+
+#[test]
 fn parse_prefix_integer_expressions() {
     let tests = vec![
         ("!5;", token::Token::Bang, 5),

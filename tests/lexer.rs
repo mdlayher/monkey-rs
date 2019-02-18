@@ -31,6 +31,7 @@ if (5 < 10) {
 4 % 2
 "foobar"
 "foo bar"
+[1, 2];
 "#,
     )
     .lex()
@@ -171,6 +172,19 @@ if (5 < 10) {
         //
         Token::String("foobar".to_string()),
         Token::String("foo bar".to_string()),
+        //
+        Token::LeftBracket,
+        Token::Integer(Integer {
+            radix: Radix::Decimal,
+            value: 1,
+        }),
+        Token::Comma,
+        Token::Integer(Integer {
+            radix: Radix::Decimal,
+            value: 2,
+        }),
+        Token::RightBracket,
+        Token::Semicolon,
         //
         Token::Eof,
     ];
