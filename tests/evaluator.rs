@@ -128,12 +128,49 @@ fn evaluate_return_statement() {
     }
 }
 
+#[test]
+fn evaluate_let_statement() {
+    let tests = vec![
+        ("let a = 5; a;", 5),
+        ("let a = 5 * 5; a;", 25),
+        ("let a = 5; let b = a; b;", 5),
+        ("let a = 5; let b = a; let c = a + b + 5; c", 15),
+    ];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Integer(int) = eval(input) {
+            int
+        } else {
+            panic!("not an integer object");
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_let_statement_unknown_identifier() {
+    let input = "foobar";
+
+    let err = eval_result(input).expect_err("expected an error but none was found");
+
+    if let evaluator::Error::UnknownIdentifier(id) = err {
+        assert_eq!(input, id);
+    } else {
+        panic!("not an unknown identifier error");
+    }
+}
+
 fn eval(input: &str) -> object::Object {
+    eval_result(input).expect("failed to evaluate program")
+}
+
+fn eval_result(input: &str) -> evaluator::Result<object::Object> {
     let l = lexer::Lexer::new(input);
 
     let mut p = parser::Parser::new(l).expect("failed to create parser");
 
     let prog = p.parse().expect("failed to parse program");
 
-    evaluator::eval(ast::Node::Program(prog)).expect("failed to evaluate program")
+    evaluator::eval(ast::Node::Program(prog), &mut object::Environment::new())
 }

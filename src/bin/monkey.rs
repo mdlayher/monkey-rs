@@ -4,6 +4,7 @@ extern crate mdl_monkey;
 use mdl_monkey::ast;
 use mdl_monkey::evaluator;
 use mdl_monkey::lexer::Lexer;
+use mdl_monkey::object::Environment;
 use mdl_monkey::parser::Parser;
 use mdl_monkey::token::Token;
 
@@ -83,7 +84,10 @@ fn parse(input: &str) -> Result<ast::Program, String> {
 fn eval(node: ast::Node) -> Result<(), String> {
     println!("eval:");
 
-    let obj = evaluator::eval(node).map_err(|err| err.to_string())?;
+    // TODO(mdlayher): turn this into a real REPL and share env.
+    let mut env = Environment::new();
+
+    let obj = evaluator::eval(node, &mut env).map_err(|err| err.to_string())?;
     println!("  - {}", obj);
 
     Ok(())
