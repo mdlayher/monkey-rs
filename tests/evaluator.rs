@@ -261,6 +261,40 @@ apply(add, 2, 2);
     }
 }
 
+#[test]
+fn evaluate_builtin_len() {
+    let tests = vec![
+        (r#"len("")"#, 0),
+        (r#"len("four")"#, 4),
+        (r#"len("hello world")"#, 11),
+    ];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Integer(int) = eval(input) {
+            int
+        } else {
+            panic!("not an integer object");
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_builtin_len_errors() {
+    let tests = vec![r#"len()"#, r#"len(1)"#, r#"len("foo", "bar")"#];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Object(object::Error::Builtin(_, _)) = err {
+            // Error was of the type we expected.
+        } else {
+            panic!("not a built-in object error");
+        }
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     eval_result(input).expect("failed to evaluate program")
 }

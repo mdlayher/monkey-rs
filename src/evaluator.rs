@@ -48,20 +48,22 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                 env: env.clone(),
             })),
             ast::Expression::Call(call) => {
-                let function = if let Object::Function(func) =
-                    eval(ast::Node::Expression(*call.function), env)?
-                {
-                    func
-                } else {
-                    return Err(Error::Evaluation(
-                        err_node,
-                        "can only apply functions with function object".to_string(),
-                    ));
-                };
-
+                let func = eval(ast::Node::Expression(*call.function), env)?;
                 let args = eval_expressions(call.arguments, env)?;
 
-                apply_function(function, args)
+                let function = match func {
+                    Object::Function(f) => f,
+                    // Built-ins use their own execution logic.
+                    Object::Builtin(b) => return b.apply(&args).map_err(Error::Object),
+                    _ => {
+                        return Err(Error::Evaluation(
+                            err_node,
+                            "can only apply functions with function or builtin object".to_string(),
+                        ));
+                    }
+                };
+
+                apply_function(function, &args)
             }
         },
     }
@@ -259,10 +261,16 @@ fn eval_if_expression(expr: ast::IfExpression, env: &mut object::Environment) ->
 
 /// Evaluates an object bound to an identifier and returns the result.
 fn eval_identifier(id: String, env: &mut object::Environment) -> Result<Object> {
-    Ok(env
-        .get(&id)
-        .ok_or_else(|| Error::UnknownIdentifier(id))?
-        .clone())
+    match object::Builtin::lookup(&id) {
+        // Found a built-in.
+        Some(b) => Ok(Object::Builtin(b)),
+
+        // Didn't find a built-in, look for user-defined identifiers.
+        None => Ok(env
+            .get(&id)
+            .ok_or_else(|| Error::UnknownIdentifier(id))?
+            .clone()),
+    }
 }
 
 /// Evaluates several expressions and produces objects for each of them.
@@ -280,9 +288,9 @@ fn eval_expressions(
 }
 
 /// Applies a function with arguments to produce a result object.
-fn apply_function(function: object::Function, args: Vec<Object>) -> Result<Object> {
+fn apply_function(function: object::Function, args: &[Object]) -> Result<Object> {
     // Bind function arguments in an enclosed environment.
-    let mut extended_env = extend_function_env(&function, args);
+    let mut extended_env = extend_function_env(&function, &args);
     let evaluated = eval(
         ast::Node::Statement(ast::Statement::Block(function.body)),
         &mut extended_env,
@@ -297,7 +305,7 @@ fn apply_function(function: object::Function, args: Vec<Object>) -> Result<Objec
 }
 
 // Extends a function's environment to bind its arguments.
-fn extend_function_env(func: &object::Function, args: Vec<Object>) -> object::Environment {
+fn extend_function_env(func: &object::Function, args: &[Object]) -> object::Environment {
     let mut env = object::Environment::new_enclosed(func.env.clone());
 
     for (i, param) in func.parameters.iter().enumerate() {
@@ -322,6 +330,7 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Debug, PartialEq)]
 pub enum Error {
     Evaluation(ast::Node, String),
+    Object(object::Error),
     UnknownIdentifier(String),
 }
 
@@ -329,6 +338,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::Evaluation(node, err) => write!(f, "evaluating node {}: {}", node, err),
+            Error::Object(err) => err.fmt(f),
             Error::UnknownIdentifier(id) => write!(f, "unknown identifier: {}", id),
         }
     }
