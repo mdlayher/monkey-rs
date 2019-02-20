@@ -5,15 +5,12 @@ use crate::ast;
 use crate::object::{self, Object};
 use crate::token::Token;
 
-use std::cell::RefCell;
 use std::error;
 use std::fmt;
-use std::rc::Rc;
 use std::result;
 
-/// Evaluates `node` and produces an `object::Object`, binding statement values
-/// into `env`.
-pub fn eval(node: ast::Node, env: Rc<RefCell<object::Environment>>) -> Result<Object> {
+/// Evaluates an `ast::Node` and produces an `object::Object`.
+pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
     // TODO(mdlayher): clean up error handling via err_node.
     let err_node = node.clone();
     match node {
@@ -22,10 +19,10 @@ pub fn eval(node: ast::Node, env: Rc<RefCell<object::Environment>>) -> Result<Ob
             ast::Statement::Block(block) => eval_block_statement(block, env),
             ast::Statement::Expression(expr) => eval(ast::Node::Expression(expr), env),
             ast::Statement::Let(stmt) => {
-                let obj = eval(ast::Node::Expression(stmt.value), env.clone())?;
+                let obj = eval(ast::Node::Expression(stmt.value), env)?;
 
                 // eval succeeded; capture this binding in our environment.
-                env.borrow_mut().set(stmt.name, &obj);
+                env.set(stmt.name, &obj);
                 Ok(obj)
             }
             ast::Statement::Return(ret) => Ok(Object::ReturnValue(Box::new(eval(
@@ -46,10 +43,13 @@ pub fn eval(node: ast::Node, env: Rc<RefCell<object::Environment>>) -> Result<Ob
             ast::Expression::Function(func) => Ok(Object::Function(object::Function {
                 parameters: func.parameters,
                 body: func.body,
+
+                // TODO(mdlayher): lifetimes get pretty ugly here if we don't
+                // clone this.
                 env: env.clone(),
             })),
             ast::Expression::Call(call) => {
-                let func = eval(ast::Node::Expression(*call.function), env.clone())?;
+                let func = eval(ast::Node::Expression(*call.function), env)?;
                 let args = eval_expressions(call.arguments, env)?;
 
                 let function = match func {
@@ -71,11 +71,11 @@ pub fn eval(node: ast::Node, env: Rc<RefCell<object::Environment>>) -> Result<Ob
 }
 
 /// Evaluates a program and returns the result.
-fn eval_program(prog: ast::Program, env: Rc<RefCell<object::Environment>>) -> Result<Object> {
+fn eval_program(prog: ast::Program, env: &mut object::Environment) -> Result<Object> {
     let mut result = Object::Null;
 
     for stmt in prog.statements {
-        result = eval(ast::Node::Statement(stmt.clone()), env.clone())?;
+        result = eval(ast::Node::Statement(stmt.clone()), env)?;
 
         // Handle early return statements if applicable, unwrapping the inner
         // value and terminating the program.
@@ -90,12 +90,12 @@ fn eval_program(prog: ast::Program, env: Rc<RefCell<object::Environment>>) -> Re
 /// Evaluates a block statement and returns the result.
 fn eval_block_statement(
     block: ast::BlockStatement,
-    env: Rc<RefCell<object::Environment>>,
+    env: &mut object::Environment,
 ) -> Result<Object> {
     let mut result = Object::Null;
 
     for stmt in block.statements {
-        result = eval(ast::Node::Statement(stmt.clone()), env.clone())?;
+        result = eval(ast::Node::Statement(stmt.clone()), env)?;
 
         // Handle early return statements if applicable, but do not unwrap the
         // inner value so that only this block statement terminates, and not
@@ -111,7 +111,7 @@ fn eval_block_statement(
 /// Evaluates a prefix expression to produce an Object.
 fn eval_prefix_expression(
     expr: ast::PrefixExpression,
-    env: Rc<RefCell<object::Environment>>,
+    env: &mut object::Environment,
     err_node: ast::Node,
 ) -> Result<Object> {
     // Evaluate the right side before applying the prefix operator.
@@ -148,10 +148,10 @@ fn eval_prefix_expression(
 /// Evaluates an infix expression to produce an Object.
 fn eval_infix_expression(
     expr: ast::InfixExpression,
-    env: Rc<RefCell<object::Environment>>,
+    env: &mut object::Environment,
     err_node: ast::Node,
 ) -> Result<Object> {
-    let left = eval(ast::Node::Expression(*expr.left), env.clone())?;
+    let left = eval(ast::Node::Expression(*expr.left), env)?;
     let right = eval(ast::Node::Expression(*expr.right), env)?;
 
     // Left and right types must match.
@@ -245,11 +245,8 @@ fn eval_infix_op(op: Token, l: f64, r: f64) -> f64 {
 }
 
 /// Evaluates an if/else expression to produce an Object.
-fn eval_if_expression(
-    expr: ast::IfExpression,
-    env: Rc<RefCell<object::Environment>>,
-) -> Result<Object> {
-    let condition = eval(ast::Node::Expression(*expr.condition), env.clone())?;
+fn eval_if_expression(expr: ast::IfExpression, env: &mut object::Environment) -> Result<Object> {
+    let condition = eval(ast::Node::Expression(*expr.condition), env)?;
 
     if is_truthy(&condition) {
         eval(
@@ -264,14 +261,13 @@ fn eval_if_expression(
 }
 
 /// Evaluates an object bound to an identifier and returns the result.
-fn eval_identifier(id: String, env: Rc<RefCell<object::Environment>>) -> Result<Object> {
+fn eval_identifier(id: String, env: &mut object::Environment) -> Result<Object> {
     match object::Builtin::lookup(&id) {
         // Found a built-in.
         Some(b) => Ok(Object::Builtin(b)),
 
         // Didn't find a built-in, look for user-defined identifiers.
         None => Ok(env
-            .borrow()
             .get(&id)
             .ok_or_else(|| Error::UnknownIdentifier(id))?
             .clone()),
@@ -281,12 +277,12 @@ fn eval_identifier(id: String, env: Rc<RefCell<object::Environment>>) -> Result<
 /// Evaluates several expressions and produces objects for each of them.
 fn eval_expressions(
     expressions: Vec<ast::Expression>,
-    env: Rc<RefCell<object::Environment>>,
+    env: &mut object::Environment,
 ) -> Result<Vec<Object>> {
     let mut results = vec![];
 
     for expr in expressions {
-        results.push(eval(ast::Node::Expression(expr), env.clone())?);
+        results.push(eval(ast::Node::Expression(expr), env)?);
     }
 
     Ok(results)
@@ -299,10 +295,10 @@ fn apply_function(
     err_node: ast::Node,
 ) -> Result<Object> {
     // Bind function arguments in an enclosed environment.
-    let extended_env = extend_function_env(&function, &args, err_node)?;
+    let mut extended_env = extend_function_env(&function, &args, err_node)?;
     let evaluated = eval(
         ast::Node::Statement(ast::Statement::Block(function.body)),
-        extended_env.clone(),
+        &mut extended_env,
     )?;
 
     // If the function had an early return, stop evaluation.
@@ -318,7 +314,7 @@ fn extend_function_env(
     func: &object::Function,
     args: &[Object],
     err_node: ast::Node,
-) -> Result<Rc<RefCell<object::Environment>>> {
+) -> Result<object::Environment> {
     if func.parameters.len() != args.len() {
         return Err(Error::Evaluation(
             err_node,
@@ -330,10 +326,10 @@ fn extend_function_env(
         ));
     }
 
-    let env = object::Environment::new_enclosed(func.env.clone());
+    let mut env = object::Environment::new_enclosed(func.env.clone());
 
     for (i, param) in func.parameters.iter().enumerate() {
-        env.borrow_mut().set(param.to_string(), &args[i]);
+        env.set(param.to_string(), &args[i]);
     }
 
     Ok(env)

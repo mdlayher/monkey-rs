@@ -248,20 +248,6 @@ apply(add, 2, 2);
 ",
             4,
         ),
-        // And recursive functions!
-        (
-            "
-let recursive = fn(n) {
-    if (n == 0) {
-        99
-    } else {
-        recursive((n - 1))
-    }
-};
-recursive(5);
-",
-            99,
-        ),
     ];
 
     for (input, want) in tests {
@@ -340,5 +326,5 @@ fn eval_result(input: &str) -> evaluator::Result<object::Object> {
 
     let prog = p.parse().expect("failed to parse program");
 
-    evaluator::eval(ast::Node::Program(prog), object::Environment::new())
+    evaluator::eval(ast::Node::Program(prog), &mut object::Environment::new())
 }
