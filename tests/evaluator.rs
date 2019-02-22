@@ -248,19 +248,18 @@ apply(add, 2, 2);
 ",
             4,
         ),
-        // And recursive functions!
+        // Closures should evaluate properly, and with the correct variable
+        // scopes.
         (
             "
-let recursive = fn(n) {
-    if (n == 0) {
-        99
-    } else {
-        recursive((n - 1))
-    }
+let x = 0;
+let f = fn(n) {
+    x + n
 };
-recursive(5);
+let x = 1;
+f(1)
 ",
-            99,
+            1,
         ),
     ];
 
@@ -340,5 +339,5 @@ fn eval_result(input: &str) -> evaluator::Result<object::Object> {
 
     let prog = p.parse().expect("failed to parse program");
 
-    evaluator::eval(ast::Node::Program(prog), object::Environment::new())
+    evaluator::eval(ast::Node::Program(prog), &mut object::Environment::new())
 }
