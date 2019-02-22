@@ -248,6 +248,19 @@ apply(add, 2, 2);
 ",
             4,
         ),
+        // Closures should evaluate properly, and with the correct variable
+        // scopes.
+        (
+            "
+let x = 0;
+let f = fn(n) {
+    x + n
+};
+let x = 1;
+f(1)
+",
+            1,
+        ),
     ];
 
     for (input, want) in tests {
