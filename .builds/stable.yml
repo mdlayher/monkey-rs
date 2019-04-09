@@ -1,0 +1,18 @@
+image: archlinux
+packages:
+  - rustup
+sources:
+  - https://github.com/mdlayher/monkey-rs
+tasks:
+  - build: |
+      rustup install stable
+      rustup default stable
+      cargo version
+      rustc --version
+      rustup --version
+      rustup component add rustfmt
+      rustup component add clippy
+      cd monkey-rs/
+      cargo fmt -- --check
+      cargo clippy --all-targets --all-features -- -D warnings
+      cargo test
