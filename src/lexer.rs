@@ -272,7 +272,7 @@ fn parse_int(chars: &[char]) -> Result<Integer> {
         // Octal literal.
         ['0', 'o'] => (Radix::Octal, 2),
         // C-style octal literal.
-        ['0', '0'...'9'] => (Radix::Octal, 1),
+        ['0', '0'..='9'] => (Radix::Octal, 1),
         // Unknown radix prefix.
         ['0', r] => {
             return Err(Error::IllegalIntegerRadix(*r));
@@ -319,7 +319,7 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {
-    fn cause(&self) -> Option<&error::Error> {
+    fn cause(&self) -> Option<&dyn error::Error> {
         match self {
             Error::IllegalFloat(err) => Some(err),
             Error::IllegalInteger(err) => Some(err),
