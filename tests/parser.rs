@@ -106,6 +106,25 @@ fn parse_array_literal() {
     assert_eq!("(!true)", format!("{}", array.elements[2]));
 }
 
+/*
+TODO(mdlayher): fix empty arrays.
+
+#[test]
+fn parse_array_literal_empty() {
+    let prog = parse("[]");
+
+    assert_eq!(prog.statements.len(), 1);
+
+    let array = if let ast::Statement::Expression(ast::Expression::Array(a)) = &prog.statements[0] {
+        a
+    } else {
+        panic!("not an array literal expression");
+    };
+
+    assert_eq!(array.elements.len(), 0);
+}
+*/
+
 #[test]
 fn parse_prefix_integer_expressions() {
     let tests = vec![

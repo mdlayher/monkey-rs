@@ -102,14 +102,24 @@ impl fmt::Display for Function {
 /// The object representation of a built-in Monkey function.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Builtin {
+    First,
+    Last,
     Len,
+    Push,
+    Puts,
+    Rest,
 }
 
 impl Builtin {
     /// Constructs a built-in using its name.
     pub fn lookup(name: &str) -> Option<Self> {
         match name {
+            "first" => Some(Builtin::First),
+            "last" => Some(Builtin::Last),
             "len" => Some(Builtin::Len),
+            "push" => Some(Builtin::Push),
+            "puts" => Some(Builtin::Puts),
+            "rest" => Some(Builtin::Rest),
 
             _ => None,
         }
@@ -119,7 +129,12 @@ impl Builtin {
     /// `Object`.
     pub fn apply(&self, args: &[Object]) -> Result<Object> {
         match self {
+            Builtin::First => builtin_first(&args),
+            Builtin::Last => builtin_last(&args),
             Builtin::Len => builtin_len(&args),
+            Builtin::Push => builtin_push(&args),
+            Builtin::Puts => builtin_puts(&args),
+            Builtin::Rest => builtin_rest(&args),
         }
     }
 }
@@ -127,8 +142,57 @@ impl Builtin {
 impl fmt::Display for Builtin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Builtin::First => write!(f, "first"),
+            Builtin::Last => write!(f, "last"),
             Builtin::Len => write!(f, "len"),
+            Builtin::Push => write!(f, "push"),
+            Builtin::Puts => write!(f, "puts"),
+            Builtin::Rest => write!(f, "rest"),
         }
+    }
+}
+
+fn builtin_first(args: &[Object]) -> Result<Object> {
+    if args.len() != 1 {
+        return Err(Error::Builtin(
+            Builtin::First,
+            format!("expected 1 argument, but got {}", args.len()),
+        ));
+    }
+
+    if let Object::Array(a) = &args[0] {
+        if !a.elements.is_empty() {
+            Ok(a.elements.first().unwrap().clone())
+        } else {
+            Ok(Object::Null)
+        }
+    } else {
+        Err(Error::Builtin(
+            Builtin::First,
+            format!("argument {} is not an array", &args[0]),
+        ))
+    }
+}
+
+fn builtin_last(args: &[Object]) -> Result<Object> {
+    if args.len() != 1 {
+        return Err(Error::Builtin(
+            Builtin::Last,
+            format!("expected 1 argument, but got {}", args.len()),
+        ));
+    }
+
+    if let Object::Array(a) = &args[0] {
+        if !a.elements.is_empty() {
+            Ok(a.elements.last().unwrap().clone())
+        } else {
+            Ok(Object::Null)
+        }
+    } else {
+        Err(Error::Builtin(
+            Builtin::Last,
+            format!("argument {} is not an array", &args[0]),
+        ))
     }
 }
 
@@ -140,16 +204,68 @@ fn builtin_len(args: &[Object]) -> Result<Object> {
         ));
     }
 
-    let string = if let Object::String(s) = &args[0] {
-        s
+    match &args[0] {
+        Object::Array(a) => Ok(Object::Integer(a.elements.len() as i64)),
+        Object::String(s) => Ok(Object::Integer(s.len() as i64)),
+        _ => Err(Error::Builtin(
+            Builtin::Len,
+            format!("argument {} cannot be used", &args[0]),
+        )),
+    }
+}
+
+fn builtin_push(args: &[Object]) -> Result<Object> {
+    if args.len() != 2 {
+        return Err(Error::Builtin(
+            Builtin::Push,
+            format!("expected 2 argument, but got {}", args.len()),
+        ));
+    }
+
+    let arr = if let Object::Array(a) = &args[0] {
+        a
     } else {
         return Err(Error::Builtin(
-            Builtin::Len,
-            format!("argument {} is not a string", &args[0]),
+            Builtin::Push,
+            format!("first argument {} is not an array", &args[0]),
         ));
     };
 
-    Ok(Object::Integer(string.len() as i64))
+    let mut out = arr.elements.clone();
+    out.push(args[1].clone());
+
+    Ok(Object::Array(Array { elements: out }))
+}
+
+fn builtin_puts(args: &[Object]) -> Result<Object> {
+    for a in args {
+        println!("{}", a);
+    }
+    Ok(Object::Null)
+}
+
+fn builtin_rest(args: &[Object]) -> Result<Object> {
+    if args.len() != 1 {
+        return Err(Error::Builtin(
+            Builtin::Rest,
+            format!("expected 1 argument, but got {}", args.len()),
+        ));
+    }
+
+    if let Object::Array(a) = &args[0] {
+        if !a.elements.is_empty() {
+            Ok(Object::Array(Array {
+                elements: a.elements.iter().skip(1).cloned().collect(),
+            }))
+        } else {
+            Ok(Object::Null)
+        }
+    } else {
+        Err(Error::Builtin(
+            Builtin::Rest,
+            format!("argument {} is not an array", &args[0]),
+        ))
+    }
 }
 
 /// The object representation of a Monkey array.

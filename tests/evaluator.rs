@@ -261,6 +261,28 @@ f(1)
 ",
             1,
         ),
+        // Exercise built-ins to implement map.
+        // TODO(mdlayher): fix empty arrays.
+        /*
+                (
+                    "
+        let map = fn(arr, f) {
+            let iter = fn(arr, accumulated) {
+                if (len(arr) == 0) {
+                    accumulated
+                } else {
+                    iter(rest(arr), push(accumulated, f(first(arr))));
+                }
+            };
+
+            iter(arr, []);
+        };
+
+        map([1, 2], fn(x) { x * 2 });
+        ",
+            1,
+         ),
+         */
     ];
 
     for (input, want) in tests {
@@ -295,11 +317,88 @@ apply(add, 2, 2);
 }
 
 #[test]
+fn evaluate_builtin_first() {
+    let tests = vec![
+        ("first([1, 2, 3])", object::Object::Integer(1)),
+        (
+            r#"first(["hello", "world"])"#,
+            object::Object::String("hello".to_string()),
+        ),
+        // TODO(mdlayher): fix empty arrays.
+        ("first([0])", object::Object::Integer(0)),
+    ];
+
+    for (input, want) in tests {
+        let got = eval(input);
+        match got {
+            object::Object::Integer(_) | object::Object::String(_) | object::Object::Null => {}
+            _ => panic!("unexpected result object"),
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_builtin_first_errors() {
+    let tests = vec!["first()", r#"first("foo", "bar")"#];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
+            assert_eq!(object::Builtin::First, b);
+        } else {
+            panic!("not a built-in object error");
+        }
+    }
+}
+
+#[test]
+fn evaluate_builtin_last() {
+    let tests = vec![
+        ("last([1, 2, 3])", object::Object::Integer(3)),
+        (
+            r#"last(["hello", "world"])"#,
+            object::Object::String("world".to_string()),
+        ),
+        // TODO(mdlayher): fix empty arrays.
+        ("last([0])", object::Object::Integer(0)),
+    ];
+
+    for (input, want) in tests {
+        let got = eval(input);
+        match got {
+            object::Object::Integer(_) | object::Object::String(_) | object::Object::Null => {}
+            _ => panic!("unexpected result object"),
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_builtin_last_errors() {
+    let tests = vec!["last()", r#"last("foo", "bar")"#];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
+            assert_eq!(object::Builtin::Last, b);
+        } else {
+            panic!("not a built-in object error");
+        }
+    }
+}
+
+#[test]
 fn evaluate_builtin_len() {
     let tests = vec![
         (r#"len("")"#, 0),
         (r#"len("four")"#, 4),
         (r#"len("hello world")"#, 11),
+        ("len([1, 2, 3])", 3),
     ];
 
     for (input, want) in tests {
@@ -322,6 +421,111 @@ fn evaluate_builtin_len_errors() {
 
         if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
             assert_eq!(object::Builtin::Len, b);
+        } else {
+            panic!("not a built-in object error");
+        }
+    }
+}
+
+#[test]
+fn evaluate_builtin_push() {
+    let tests = vec![
+        (
+            "push([1, 2, 3], 4)",
+            object::Array {
+                elements: vec![
+                    object::Object::Integer(1),
+                    object::Object::Integer(2),
+                    object::Object::Integer(3),
+                    object::Object::Integer(4),
+                ],
+            },
+        ),
+        (
+            r#"push(["hello"], "world")"#,
+            object::Array {
+                elements: vec![
+                    object::Object::String("hello".to_string()),
+                    object::Object::String("world".to_string()),
+                ],
+            },
+        ),
+        // TODO(mdlayher): fix empty arrays.
+        (
+            "push([0], 1)",
+            object::Array {
+                elements: vec![object::Object::Integer(0), object::Object::Integer(1)],
+            },
+        ),
+    ];
+
+    for (input, want) in tests {
+        if let object::Object::Array(a) = eval(input) {
+            assert_eq!(want, a);
+        } else {
+            panic!("push did not return an array");
+        }
+    }
+}
+
+#[test]
+fn evaluate_builtin_push_errors() {
+    let tests = vec!["push()", "push(1)", r#"push("foo", "bar")"#];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
+            assert_eq!(object::Builtin::Push, b);
+        } else {
+            panic!("not a built-in object error");
+        }
+    }
+}
+
+#[test]
+fn evaluate_builtin_rest() {
+    let tests = vec![
+        (
+            "rest([1, 2, 3])",
+            object::Array {
+                elements: vec![object::Object::Integer(2), object::Object::Integer(3)],
+            },
+        ),
+        (
+            r#"rest(["hello", "world"])"#,
+            object::Array {
+                elements: vec![object::Object::String("world".to_string())],
+            },
+        ),
+        (
+            "rest(rest(rest([1, 2, 3, 4])))",
+            object::Array {
+                elements: vec![object::Object::Integer(4)],
+            },
+        ),
+        // TODO(mdlayher): fix empty arrays.
+        ("rest([0])", object::Array { elements: vec![] }),
+    ];
+
+    for (input, want) in tests {
+        if let object::Object::Array(a) = eval(input) {
+            assert_eq!(want, a);
+        } else {
+            panic!("rest did not return an array");
+        }
+    }
+}
+
+#[test]
+fn evaluate_builtin_rest_errors() {
+    let tests = vec!["rest()", r#"rest("foo", "bar")"#];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Object(object::Error::Builtin(b, _)) = err {
+            assert_eq!(object::Builtin::Rest, b);
         } else {
             panic!("not a built-in object error");
         }
