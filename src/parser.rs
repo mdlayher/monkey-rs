@@ -198,6 +198,7 @@ impl<'a> Parser<'a> {
             | Token::LessThan
             | Token::GreaterThan => Some(self.parse_infix_expression(left)),
             Token::LeftParen => Some(self.parse_call_expression(left)),
+            Token::LeftBracket => Some(self.parse_index_expression(left)),
 
             // No infix parsing function.
             _ => None,
@@ -387,6 +388,21 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    /// Parses an array index infix expression.
+    fn parse_index_expression(&mut self, left: &ast::Expression) -> Result<ast::Expression> {
+        self.next_token()?;
+        self.next_token()?;
+
+        let idx = ast::Expression::Index(ast::IndexExpression {
+            left: Box::new(left.clone()),
+            index: Box::new(dbg!(self.parse_expression(Precedence::Lowest)?)),
+        });
+
+        self.expect(Token::RightBracket)?;
+
+        Ok(idx)
+    }
+
     /// Parses expressions until `end` is encountered.
     fn parse_expression_list(&mut self, end: Token) -> Result<Vec<ast::Expression>> {
         let mut expressions = vec![];
@@ -417,6 +433,7 @@ pub enum Precedence {
     Product,
     Prefix,
     Call,
+    Index,
 }
 
 // Determines the Precedence value of a given Token.
@@ -432,6 +449,7 @@ fn precedence(tok: &Token) -> Precedence {
         Token::Asterisk => Precedence::Product,
         Token::Percent => Precedence::Product,
         Token::LeftParen => Precedence::Call,
+        Token::LeftBracket => Precedence::Index,
 
         _ => Precedence::Lowest,
     }

@@ -35,7 +35,9 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
             ast::Expression::Float(f) => Ok(Object::Float(f)),
             ast::Expression::String(s) => Ok(Object::String(s)),
-            ast::Expression::Array(_a) => panic!("unhandled"),
+            ast::Expression::Array(a) => Ok(Object::Array(object::Array {
+                elements: eval_expressions(a.elements, env)?,
+            })),
             ast::Expression::Prefix(p) => eval_prefix_expression(p, env, err_node),
             ast::Expression::Infix(i) => eval_infix_expression(i, env, err_node),
             ast::Expression::If(stmt) => eval_if_expression(stmt, env),
@@ -65,6 +67,35 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                 };
 
                 apply_function(function, &args, err_node)
+            }
+            ast::Expression::Index(i) => {
+                let arr =
+                    if let object::Object::Array(a) = eval(ast::Node::Expression(*i.left), env)? {
+                        a
+                    } else {
+                        return Err(Error::Evaluation(
+                            err_node,
+                            "index operator not supported".to_string(),
+                        ));
+                    };
+
+                let idx = if let object::Object::Integer(i) =
+                    eval(ast::Node::Expression(*i.index), env)?
+                {
+                    i
+                } else {
+                    return Err(Error::Evaluation(
+                        err_node,
+                        "index must be an integer".to_string(),
+                    ));
+                };
+
+                // Is the element in bounds? If not, return null.
+                if idx >= 0 && (idx as usize) < arr.elements.len() {
+                    Ok(arr.elements[idx as usize].clone())
+                } else {
+                    Ok(Object::Null)
+                }
             }
         },
     }

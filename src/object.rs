@@ -20,6 +20,7 @@ pub enum Object {
     ReturnValue(Box<Object>),
     Function(Function),
     Builtin(Builtin),
+    Array(Array),
 }
 
 impl fmt::Display for Object {
@@ -33,6 +34,7 @@ impl fmt::Display for Object {
             Object::ReturnValue(r) => write!(f, "return({})", r),
             Object::Function(func) => func.fmt(f),
             Object::Builtin(b) => b.fmt(f),
+            Object::Array(a) => a.fmt(f),
         }
     }
 }
@@ -148,6 +150,26 @@ fn builtin_len(args: &[Object]) -> Result<Object> {
     };
 
     Ok(Object::Integer(string.len() as i64))
+}
+
+/// The object representation of a Monkey array.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Array {
+    pub elements: Vec<Object>,
+}
+
+impl fmt::Display for Array {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[{}]",
+            self.elements
+                .iter()
+                .map(|e| format!("{}", e))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
 }
 
 /// A Result type specialized use with for an Error.

@@ -328,6 +328,64 @@ fn evaluate_builtin_len_errors() {
     }
 }
 
+#[test]
+fn evaluate_array_object() {
+    let got = if let object::Object::Array(arr) = eval("[1, 2 * 2, 3 + 3]") {
+        arr
+    } else {
+        panic!("not an array object");
+    };
+
+    let want = vec![
+        object::Object::Integer(1),
+        object::Object::Integer(4),
+        object::Object::Integer(6),
+    ];
+
+    assert_eq!(want.len(), got.elements.len());
+    for e in want.iter().zip(got.elements.iter()) {
+        assert_eq!(e.0, e.1);
+    }
+}
+
+#[test]
+fn evaluate_array_index_objects() {
+    let tests = vec![
+        ("[1, 2, 3][0]", object::Object::Integer(1)),
+        ("[1, 2, 3][-1]", object::Object::Null),
+        ("[2, 4, 6][4 - 4 * 1 + 2]", object::Object::Integer(6)),
+        (
+            r#"["hello", "world", fn(x) { x }][2](1)"#,
+            object::Object::Integer(1),
+        ),
+    ];
+
+    for (input, want) in tests {
+        let got = eval(input);
+        match got {
+            object::Object::Integer(_) | object::Object::Null => {}
+            _ => panic!("unexpected result object"),
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_array_index_objects_errors() {
+    let tests = vec!["1[0]", "[1][true]"];
+
+    for input in tests {
+        let err = eval_result(input).expect_err("expected an error but none was found");
+
+        if let evaluator::Error::Evaluation(_, _) = err {
+            continue;
+        } else {
+            panic!("not an evaluation error");
+        }
+    }
+}
+
 fn eval(input: &str) -> object::Object {
     eval_result(input).expect("failed to evaluate program")
 }

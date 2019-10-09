@@ -122,6 +122,7 @@ pub enum Expression {
     If(IfExpression),
     Function(FunctionLiteral),
     Call(CallExpression),
+    Index(IndexExpression),
 }
 
 impl fmt::Display for Expression {
@@ -138,6 +139,7 @@ impl fmt::Display for Expression {
             Expression::If(i) => i.fmt(f),
             Expression::Function(fl) => fl.fmt(f),
             Expression::Call(c) => c.fmt(f),
+            Expression::Index(i) => i.fmt(f),
         }
     }
 }
@@ -237,5 +239,18 @@ impl fmt::Display for CallExpression {
         }
 
         write!(f, "{}({})", self.function, args.join(", "))
+    }
+}
+
+/// An array index expression.
+#[derive(Clone, Debug, PartialEq)]
+pub struct IndexExpression {
+    pub left: Box<Expression>,
+    pub index: Box<Expression>,
+}
+
+impl fmt::Display for IndexExpression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}[{}])", self.left, self.index)
     }
 }
