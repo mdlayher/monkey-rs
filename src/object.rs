@@ -290,6 +290,7 @@ impl fmt::Display for Array {
     }
 }
 
+/// Objects which may be used as `Hash` keys.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Hashable {
     Integer(i64),
