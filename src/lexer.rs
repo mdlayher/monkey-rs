@@ -1,6 +1,6 @@
 //! A lexer for the Monkey programming language from <https://interpreterbook.com/>.
 
-use crate::token::{Integer, Radix, Token};
+use crate::token::{Float, Integer, Radix, Token};
 
 use std::error;
 use std::fmt;
@@ -82,6 +82,7 @@ impl<'a> Lexer<'a> {
             '<' => Token::LessThan,
             '>' => Token::GreaterThan,
             ',' => Token::Comma,
+            ':' => Token::Colon,
             ';' => Token::Semicolon,
             '(' => Token::LeftParen,
             ')' => Token::RightParen,
@@ -185,9 +186,9 @@ impl<'a> Lexer<'a> {
 
         // TODO(mdlayher): this detection logic needs work.
         if chars.contains(&'.') {
-            Ok(Token::Float(
+            Ok(Token::Float(Float::new(
                 f64::from_str(&chars.iter().collect::<String>()).map_err(Error::IllegalFloat)?,
-            ))
+            )))
         } else {
             Ok(Token::Integer(parse_int(&chars)?))
         }

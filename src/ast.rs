@@ -2,11 +2,14 @@
 //! <https://interpreterbook.com/>.
 
 use crate::token;
+use std::hash::Hash;
+use std::hash::Hasher;
 
+use std::collections::HashMap;
 use std::fmt;
 
 /// Any AST node in a Monkey program.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Node {
     Program(Program),
     Statement(Statement),
@@ -24,7 +27,7 @@ impl fmt::Display for Node {
 }
 
 /// The top level structure of a Monkey program.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Program {
     /// The statements that make up the `Program`.
     pub statements: Vec<Statement>,
@@ -48,7 +51,7 @@ impl fmt::Display for Program {
 }
 
 /// Possible statement types in Monkey.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Statement {
     Expression(Expression),
     Let(LetStatement),
@@ -68,7 +71,7 @@ impl fmt::Display for Statement {
 }
 
 /// A statement that binds an expression to an identifier.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
@@ -81,7 +84,7 @@ impl fmt::Display for LetStatement {
 }
 
 /// A statement that returns a value.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ReturnStatement {
     pub value: Expression,
 }
@@ -93,7 +96,7 @@ impl fmt::Display for ReturnStatement {
 }
 
 /// A statement produced by a block.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct BlockStatement {
     pub statements: Vec<Statement>,
 }
@@ -109,11 +112,11 @@ impl fmt::Display for BlockStatement {
 }
 
 /// A computed expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expression {
     Identifier(String),
     Integer(token::Integer),
-    Float(f64),
+    Float(token::Float),
     Boolean(bool),
     String(String),
     Array(ArrayLiteral),
@@ -123,6 +126,7 @@ pub enum Expression {
     Function(FunctionLiteral),
     Call(CallExpression),
     Index(IndexExpression),
+    Hash(HashLiteral),
 }
 
 impl fmt::Display for Expression {
@@ -133,19 +137,20 @@ impl fmt::Display for Expression {
             Expression::Float(fl) => fl.fmt(f),
             Expression::Boolean(b) => b.fmt(f),
             Expression::Prefix(p) => p.fmt(f),
-            Expression::String(s) => s.fmt(f),
+            Expression::String(s) => write!(f, r#""{}""#, s),
             Expression::Array(a) => a.fmt(f),
             Expression::Infix(i) => i.fmt(f),
             Expression::If(i) => i.fmt(f),
             Expression::Function(fl) => fl.fmt(f),
             Expression::Call(c) => c.fmt(f),
             Expression::Index(i) => i.fmt(f),
+            Expression::Hash(h) => h.fmt(f),
         }
     }
 }
 
 /// An array of objects.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ArrayLiteral {
     pub elements: Vec<Expression>,
 }
@@ -165,7 +170,7 @@ impl fmt::Display for ArrayLiteral {
 }
 
 /// A prefix expression such as negation or logical not.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct PrefixExpression {
     pub operator: token::Token,
     pub right: Box<Expression>,
@@ -178,7 +183,7 @@ impl fmt::Display for PrefixExpression {
 }
 
 /// An infix expression such as a mathematical computation.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct InfixExpression {
     pub left: Box<Expression>,
     pub operator: token::Token,
@@ -192,7 +197,7 @@ impl fmt::Display for InfixExpression {
 }
 
 /// An expression comprised of an if/else block.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
     pub consequence: BlockStatement,
@@ -212,7 +217,7 @@ impl fmt::Display for IfExpression {
 }
 
 /// A function literal.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct FunctionLiteral {
     pub parameters: Vec<String>,
     pub body: BlockStatement,
@@ -225,7 +230,7 @@ impl fmt::Display for FunctionLiteral {
 }
 
 /// A function call expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CallExpression {
     pub function: Box<Expression>,
     pub arguments: Vec<Expression>,
@@ -243,7 +248,7 @@ impl fmt::Display for CallExpression {
 }
 
 /// An array index expression.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct IndexExpression {
     pub left: Box<Expression>,
     pub index: Box<Expression>,
@@ -252,5 +257,33 @@ pub struct IndexExpression {
 impl fmt::Display for IndexExpression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}[{}])", self.left, self.index)
+    }
+}
+
+/// A hash literal expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct HashLiteral {
+    pub pairs: HashMap<Expression, Expression>,
+}
+
+// This is a bit of a hack, but we need all Expressions to implement Hasher,
+// although we will never hash a HashLiteral itself.
+#[allow(clippy::derive_hash_xor_eq)]
+impl Hash for HashLiteral {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        panic!("HashLiteral cannot be hashed");
+    }
+}
+
+impl fmt::Display for HashLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut pairs = vec![];
+        for pair in &self.pairs {
+            pairs.push(format!(r#"{}: {}"#, pair.0, pair.1));
+        }
+
+        // Sort for deterministic output.
+        pairs.sort();
+        write!(f, "{{{}}}", pairs.join(", "))
     }
 }

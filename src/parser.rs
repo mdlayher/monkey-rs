@@ -3,6 +3,7 @@
 use crate::token::Token;
 use crate::{ast, lexer};
 
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::mem;
@@ -173,6 +174,7 @@ impl<'a> Parser<'a> {
                 let elements = self.parse_expression_list(Token::RightBracket)?;
                 Ok(ast::Expression::Array(ast::ArrayLiteral { elements }))
             }
+            Token::LeftBrace => self.parse_hash_literal(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_literal(),
 
@@ -395,12 +397,38 @@ impl<'a> Parser<'a> {
 
         let idx = ast::Expression::Index(ast::IndexExpression {
             left: Box::new(left.clone()),
-            index: Box::new(dbg!(self.parse_expression(Precedence::Lowest)?)),
+            index: Box::new(self.parse_expression(Precedence::Lowest)?),
         });
 
         self.expect(Token::RightBracket)?;
 
         Ok(idx)
+    }
+
+    /// Parses a hash literal.
+    fn parse_hash_literal(&mut self) -> Result<ast::Expression> {
+        let mut pairs = HashMap::new();
+
+        while self.peek != Token::RightBrace {
+            self.next_token()?;
+
+            let key = self.parse_expression(Precedence::Lowest)?;
+            self.expect(Token::Colon)?;
+            self.next_token()?;
+
+            let value = self.parse_expression(Precedence::Lowest)?;
+
+            pairs.insert(key, value);
+
+            // Any more items to parse?
+            if self.peek != Token::RightBrace {
+                self.expect(Token::Comma)?;
+            }
+        }
+
+        self.expect(Token::RightBrace)?;
+
+        Ok(ast::Expression::Hash(ast::HashLiteral { pairs }))
     }
 
     /// Parses expressions until `end` is encountered.

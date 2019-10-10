@@ -2,6 +2,8 @@ extern crate mdl_monkey;
 
 use mdl_monkey::{ast, evaluator, lexer, object, parser};
 
+use std::collections::HashMap;
+
 #[test]
 fn evaluate_integer_expression() {
     let tests = vec![
@@ -552,8 +554,8 @@ fn evaluate_array_index_objects() {
 }
 
 #[test]
-fn evaluate_array_index_objects_errors() {
-    let tests = vec!["1[0]", "[1][true]"];
+fn evaluate_index_objects_errors() {
+    let tests = vec!["1[0]", "[1][true]", r#"1["hello"]"#, "[0][fn(x) { x }]"];
 
     for input in tests {
         let err = eval_result(input).expect_err("expected an error but none was found");
@@ -563,6 +565,56 @@ fn evaluate_array_index_objects_errors() {
         } else {
             panic!("not an evaluation error");
         }
+    }
+}
+
+#[test]
+fn evaluate_hash_objects() {
+    let mut pairs = HashMap::new();
+    pairs.insert(
+        object::Hashable::String("one".to_string()),
+        object::Object::Integer(1),
+    );
+    pairs.insert(
+        object::Hashable::Integer(2),
+        object::Object::String("two".to_string()),
+    );
+    pairs.insert(object::Hashable::Boolean(true), object::Object::Integer(3));
+
+    let tests = vec![(
+        r#"
+let two = 2;
+{"one": 1 + (0 * 1), two: "two", true: 3}
+        "#,
+        object::Hash { pairs },
+    )];
+
+    for (input, want) in tests {
+        let got = if let object::Object::Hash(h) = eval(input) {
+            h
+        } else {
+            panic!("not a hash object");
+        };
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn evaluate_hash_index_objects() {
+    let tests = vec![
+        (r#"{"foo": 1}["bar"]"#, object::Object::Null),
+        (r#"{"foo": 1, "bar": 0}["foo"]"#, object::Object::Integer(1)),
+        (r#"{false: 1, true: 0}[false]"#, object::Object::Integer(1)),
+        (r#"{10: 1, 1: 0}[10]"#, object::Object::Integer(1)),
+        (
+            r#"{1: 1, 0: 0}[fn(x) { x }(1)]"#,
+            object::Object::Integer(1),
+        ),
+    ];
+
+    for (input, want) in tests {
+        assert_eq!(want, eval(input));
     }
 }
 

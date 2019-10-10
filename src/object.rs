@@ -21,6 +21,7 @@ pub enum Object {
     Function(Function),
     Builtin(Builtin),
     Array(Array),
+    Hash(Hash),
 }
 
 impl fmt::Display for Object {
@@ -35,6 +36,7 @@ impl fmt::Display for Object {
             Object::Function(func) => func.fmt(f),
             Object::Builtin(b) => b.fmt(f),
             Object::Array(a) => a.fmt(f),
+            Object::Hash(h) => h.fmt(f),
         }
     }
 }
@@ -285,6 +287,42 @@ impl fmt::Display for Array {
                 .collect::<Vec<String>>()
                 .join(", ")
         )
+    }
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Hashable {
+    Integer(i64),
+    Boolean(bool),
+    String(String),
+}
+
+impl fmt::Display for Hashable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Hashable::Integer(i) => i.fmt(f),
+            Hashable::Boolean(b) => b.fmt(f),
+            Hashable::String(s) => s.fmt(f),
+        }
+    }
+}
+
+/// The object representation of a Monkey hash.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Hash {
+    pub pairs: HashMap<Hashable, Object>,
+}
+
+impl fmt::Display for Hash {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut pairs = vec![];
+        for pair in &self.pairs {
+            pairs.push(format!(r#"{}: {}"#, pair.0, pair.1));
+        }
+
+        // Sort for deterministic output.
+        pairs.sort();
+        write!(f, "{{{}}}", pairs.join(", "))
     }
 }
 

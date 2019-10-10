@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::token::{Integer, Radix, Token};
+use mdl_monkey::token::{Float, Integer, Radix, Token};
 
 #[test]
 fn token_display() {
@@ -39,7 +39,7 @@ fn token_display() {
             }),
             "0x101",
         ),
-        (Token::Float(1.23), "1.23"),
+        (Token::Float(Float::new(1.23)), "1.23"),
         (Token::Assign, "="),
         (Token::Plus, "+"),
         (Token::Minus, "-"),
@@ -52,6 +52,7 @@ fn token_display() {
         (Token::LessThan, "<"),
         (Token::GreaterThan, ">"),
         (Token::Comma, ","),
+        (Token::Colon, ":"),
         (Token::Semicolon, ";"),
         (Token::LeftParen, "("),
         (Token::RightParen, ")"),

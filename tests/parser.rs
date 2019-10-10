@@ -67,7 +67,7 @@ fn parse_float_literal_expression() {
 
     // Direct equality comparison of floats isn't a good idea, see:
     // https://github.com/rust-lang/rust-clippy/issues/46.
-    assert!((want - *got).abs() < std::f64::EPSILON);
+    assert!((want - got.to_f64()).abs() < std::f64::EPSILON);
 }
 
 #[test]
@@ -268,6 +268,27 @@ fn parse_call_expressions() {
             "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
             "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
         ),
+    ];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
+fn parse_hash_expressions() {
+    let tests = vec![
+        (
+            r#"{"one": 1, "two": 2, "three": 3}"#,
+            r#"{"one": 1, "three": 3, "two": 2}"#,
+        ),
+        (
+            r#"{"one": 0 + 1, "two": 10 - 8, "three": 15 / 5}"#,
+            r#"{"one": (0 + 1), "three": (15 / 5), "two": (10 - 8)}"#,
+        ),
+        ("{}", "{}"),
     ];
 
     for (input, want) in tests {

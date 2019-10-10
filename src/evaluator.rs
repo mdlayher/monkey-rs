@@ -5,6 +5,7 @@ use crate::ast;
 use crate::object::{self, Object};
 use crate::token::Token;
 
+use std::collections::HashMap;
 use std::error;
 use std::fmt;
 use std::result;
@@ -33,7 +34,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
         ast::Node::Expression(expr) => match expr {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
-            ast::Expression::Float(f) => Ok(Object::Float(f)),
+            ast::Expression::Float(f) => Ok(Object::Float(f.to_f64())),
             ast::Expression::String(s) => Ok(Object::String(s)),
             ast::Expression::Array(a) => Ok(Object::Array(object::Array {
                 elements: eval_expressions(a.elements, env)?,
@@ -68,34 +69,72 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
 
                 apply_function(function, &args, err_node)
             }
-            ast::Expression::Index(i) => {
-                let arr =
-                    if let object::Object::Array(a) = eval(ast::Node::Expression(*i.left), env)? {
-                        a
+            ast::Expression::Index(i) => match (
+                eval(ast::Node::Expression(*i.left), env)?,
+                eval(ast::Node::Expression(*i.index), env)?,
+            ) {
+                // Array with numeric index.
+                (object::Object::Array(a), object::Object::Integer(i)) => {
+                    // Is the element in bounds? If not, return null.
+                    if i >= 0 && (i as usize) < a.elements.len() {
+                        Ok(a.elements[i as usize].clone())
                     } else {
-                        return Err(Error::Evaluation(
-                            err_node,
-                            "index operator not supported".to_string(),
-                        ));
+                        Ok(Object::Null)
+                    }
+                }
+
+                // Hash with some type of index.
+                (object::Object::Hash(h), k) => {
+                    let key = match k {
+                        // TODO(mdlayher): deduplicate this conversion.
+                        object::Object::Boolean(b) => object::Hashable::Boolean(b),
+                        object::Object::Integer(i) => object::Hashable::Integer(i),
+                        object::Object::String(s) => object::Hashable::String(s),
+                        _ => {
+                            return Err(Error::Evaluation(
+                                err_node,
+                                "only strings, integers, and booleans can be used as hash keys"
+                                    .to_string(),
+                            ));
+                        }
                     };
 
-                let idx = if let object::Object::Integer(i) =
-                    eval(ast::Node::Expression(*i.index), env)?
-                {
-                    i
-                } else {
-                    return Err(Error::Evaluation(
-                        err_node,
-                        "index must be an integer".to_string(),
-                    ));
-                };
-
-                // Is the element in bounds? If not, return null.
-                if idx >= 0 && (idx as usize) < arr.elements.len() {
-                    Ok(arr.elements[idx as usize].clone())
-                } else {
-                    Ok(Object::Null)
+                    // Does the element exist? If not, return null.
+                    if let Some(v) = h.pairs.get(&key) {
+                        Ok(v.clone())
+                    } else {
+                        Ok(Object::Null)
+                    }
                 }
+
+                // Unhandled combination.
+                _ => Err(Error::Evaluation(
+                    err_node,
+                    "index operator not supported on data structure of this type".to_string(),
+                )),
+            },
+            ast::Expression::Hash(h) => {
+                let mut pairs = HashMap::new();
+
+                for (k, v) in h.pairs {
+                    let key = match eval(ast::Node::Expression(k), env)? {
+                        // TODO(mdlayher): deduplicate this conversion.
+                        object::Object::Boolean(b) => object::Hashable::Boolean(b),
+                        object::Object::Integer(i) => object::Hashable::Integer(i),
+                        object::Object::String(s) => object::Hashable::String(s),
+                        _ => {
+                            return Err(Error::Evaluation(
+                                err_node,
+                                "only strings, integers, and booleans can be used as hash keys"
+                                    .to_string(),
+                            ));
+                        }
+                    };
+
+                    pairs.insert(key, eval(ast::Node::Expression(v), env)?);
+                }
+
+                Ok(Object::Hash(object::Hash { pairs }))
             }
         },
     }

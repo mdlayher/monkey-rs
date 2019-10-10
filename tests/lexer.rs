@@ -1,7 +1,7 @@
 extern crate mdl_monkey;
 
 use mdl_monkey::lexer::{Error, Lexer};
-use mdl_monkey::token::{Integer, Radix, Token};
+use mdl_monkey::token::{Float, Integer, Radix, Token};
 
 #[test]
 fn lex_next_token() {
@@ -32,6 +32,7 @@ if (5 < 10) {
 "foobar"
 "foo bar"
 [1, 2];
+{"foo": "bar"}
 "#,
     )
     .lex()
@@ -157,8 +158,8 @@ if (5 < 10) {
         }),
         Token::Semicolon,
         //
-        Token::Float(1.01),
-        Token::Float(2.),
+        Token::Float(Float::new(1.01)),
+        Token::Float(Float::new(2.)),
         //
         Token::Integer(Integer {
             radix: Radix::Decimal,
@@ -185,6 +186,12 @@ if (5 < 10) {
         }),
         Token::RightBracket,
         Token::Semicolon,
+        //
+        Token::LeftBrace,
+        Token::String("foo".to_string()),
+        Token::Colon,
+        Token::String("bar".to_string()),
+        Token::RightBrace,
         //
         Token::Eof,
     ];
