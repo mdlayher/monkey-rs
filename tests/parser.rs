@@ -89,41 +89,29 @@ fn parse_string_expression() {
 
 #[test]
 fn parse_array_literal() {
-    let prog = parse("[1, 2 * 2, !true]");
+    let tests = vec![
+        ("[1, 2 * 2, !true]", vec!["1", "(2 * 2)", "(!true)"]),
+        ("[]", vec![]),
+    ];
 
-    assert_eq!(prog.statements.len(), 1);
+    for (input, want) in tests {
+        let prog = parse(input);
 
-    let array = if let ast::Statement::Expression(ast::Expression::Array(a)) = &prog.statements[0] {
-        a
-    } else {
-        panic!("not an array literal expression");
-    };
+        assert_eq!(prog.statements.len(), 1);
 
-    assert_eq!(array.elements.len(), 3);
+        let got = if let ast::Statement::Expression(ast::Expression::Array(a)) = &prog.statements[0]
+        {
+            a
+        } else {
+            panic!("not an array literal expression");
+        };
 
-    assert_eq!("1", format!("{}", array.elements[0]));
-    assert_eq!("(2 * 2)", format!("{}", array.elements[1]));
-    assert_eq!("(!true)", format!("{}", array.elements[2]));
+        assert_eq!(got.elements.len(), want.len());
+        for e in want.iter().zip(got.elements.iter()) {
+            assert_eq!(*e.0, format!("{}", e.1));
+        }
+    }
 }
-
-/*
-TODO(mdlayher): fix empty arrays.
-
-#[test]
-fn parse_array_literal_empty() {
-    let prog = parse("[]");
-
-    assert_eq!(prog.statements.len(), 1);
-
-    let array = if let ast::Statement::Expression(ast::Expression::Array(a)) = &prog.statements[0] {
-        a
-    } else {
-        panic!("not an array literal expression");
-    };
-
-    assert_eq!(array.elements.len(), 0);
-}
-*/
 
 #[test]
 fn parse_prefix_integer_expressions() {

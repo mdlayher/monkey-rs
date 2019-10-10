@@ -261,28 +261,6 @@ f(1)
 ",
             1,
         ),
-        // Exercise built-ins to implement map.
-        // TODO(mdlayher): fix empty arrays.
-        /*
-                (
-                    "
-        let map = fn(arr, f) {
-            let iter = fn(arr, accumulated) {
-                if (len(arr) == 0) {
-                    accumulated
-                } else {
-                    iter(rest(arr), push(accumulated, f(first(arr))));
-                }
-            };
-
-            iter(arr, []);
-        };
-
-        map([1, 2], fn(x) { x * 2 });
-        ",
-            1,
-         ),
-         */
     ];
 
     for (input, want) in tests {
@@ -324,8 +302,7 @@ fn evaluate_builtin_first() {
             r#"first(["hello", "world"])"#,
             object::Object::String("hello".to_string()),
         ),
-        // TODO(mdlayher): fix empty arrays.
-        ("first([0])", object::Object::Integer(0)),
+        ("first([])", object::Object::Null),
     ];
 
     for (input, want) in tests {
@@ -362,8 +339,7 @@ fn evaluate_builtin_last() {
             r#"last(["hello", "world"])"#,
             object::Object::String("world".to_string()),
         ),
-        // TODO(mdlayher): fix empty arrays.
-        ("last([0])", object::Object::Integer(0)),
+        ("last([])", object::Object::Null),
     ];
 
     for (input, want) in tests {
@@ -452,9 +428,9 @@ fn evaluate_builtin_push() {
         ),
         // TODO(mdlayher): fix empty arrays.
         (
-            "push([0], 1)",
+            "push([], 1)",
             object::Array {
-                elements: vec![object::Object::Integer(0), object::Object::Integer(1)],
+                elements: vec![object::Object::Integer(1)],
             },
         ),
     ];

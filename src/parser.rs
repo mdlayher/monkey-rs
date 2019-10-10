@@ -405,6 +405,12 @@ impl<'a> Parser<'a> {
 
     /// Parses expressions until `end` is encountered.
     fn parse_expression_list(&mut self, end: Token) -> Result<Vec<ast::Expression>> {
+        // Special case: empty list.
+        if self.peek == end {
+            self.next_token()?;
+            return Ok(vec![]);
+        }
+
         let mut expressions = vec![];
 
         // Collect the remaining comma-separated expressions.
