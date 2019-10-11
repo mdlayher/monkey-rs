@@ -2,11 +2,13 @@ extern crate getopts;
 extern crate mdl_monkey;
 
 use mdl_monkey::ast;
+use mdl_monkey::compiler::Compiler;
 use mdl_monkey::evaluator;
 use mdl_monkey::lexer::Lexer;
 use mdl_monkey::object::Environment;
 use mdl_monkey::parser::Parser;
 use mdl_monkey::token::Token;
+use mdl_monkey::vm::{self, Vm};
 
 use getopts::Options;
 use std::env;
@@ -16,6 +18,11 @@ fn main() -> Result<(), String> {
     let program = args[0].clone();
 
     let mut opts = Options::new();
+    opts.optflag(
+        "e",
+        "eval",
+        "use the eval interpreter backend instead of the compiler/VM backend",
+    );
     opts.optflag("h", "help", "print this help menu");
     opts.optflag("l", "lex", "display tokens produced by the lexer");
 
@@ -37,7 +44,11 @@ fn main() -> Result<(), String> {
 
     let prog = parse(&input)?;
 
-    eval(ast::Node::Program(prog))?;
+    if matches.opt_present("e") {
+        eval(ast::Node::Program(prog))?;
+    } else {
+        run_vm(ast::Node::Program(prog))?;
+    }
 
     Ok(())
 }
@@ -89,6 +100,22 @@ fn eval(node: ast::Node) -> Result<(), String> {
 
     let obj = evaluator::eval(node, &mut env).map_err(|err| err.to_string())?;
     println!("  - {}", obj);
+
+    Ok(())
+}
+
+fn run_vm(node: ast::Node) -> Result<(), String> {
+    println!("compiler/VM:");
+
+    let mut c = Compiler::new();
+    c.compile(node).map_err(|err| err.to_string())?;
+
+    let mut stack = vm::new_stack();
+    let mut vm = Vm::new(&mut stack);
+    vm.run(&c.bytecode()).map_err(|err| err.to_string())?;
+
+    // TODO(mdlayher): more output.
+    println!("  - {:?}", vm.last_popped());
 
     Ok(())
 }
