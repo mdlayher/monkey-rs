@@ -2,6 +2,7 @@
 //! <https://interpreterbook.com/>.
 
 pub mod ast;
+pub mod code;
 pub mod evaluator;
 pub mod lexer;
 pub mod object;
