@@ -69,6 +69,9 @@ impl<'a> Vm<'a> {
                 code::Opcode::False => {
                     self.push(FALSE)?;
                 }
+                code::Opcode::Negate | code::Opcode::Not => {
+                    self.prefix_op(op)?;
+                }
             };
         }
 
@@ -108,6 +111,29 @@ impl<'a> Vm<'a> {
                 // Invalid combination.
                 (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
             },
+            None => Err(Error::Internal(ErrorKind::StackEmpty)),
+        }
+    }
+
+    fn prefix_op(&mut self, op: code::Opcode) -> Result<()> {
+        let args = self.pop_n(1);
+        match args {
+            Some(args) => {
+                let out = match (op, &args[0]) {
+                    (code::Opcode::Not, _) => match args[0] {
+                        object::Object::Boolean(b) => object::Object::Boolean(!b),
+                        // According to the compiler book, all non-boolean false
+                        // values are considered truthy and should return false.
+                        _ => FALSE,
+                    },
+                    (code::Opcode::Negate, object::Object::Integer(i)) => {
+                        object::Object::Integer(-i)
+                    }
+                    _ => panic!("unhandled prefix operation: {:?} {:?}", op, args[0]),
+                };
+
+                self.push(out)
+            }
             None => Err(Error::Internal(ErrorKind::StackEmpty)),
         }
     }

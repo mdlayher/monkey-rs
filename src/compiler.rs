@@ -26,7 +26,6 @@ impl Compiler {
                 }
             }
             ast::Node::Expression(e) => match e {
-                ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Boolean(b) => {
                     let op = if b {
                         code::Opcode::True
@@ -39,6 +38,18 @@ impl Compiler {
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(object::Object::Integer(i.value))];
                     self.emit(code::Opcode::Constant, oper)?;
+                }
+                ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
+                ast::Expression::Prefix(p) => {
+                    self.compile(ast::Node::Expression(*p.right))?;
+
+                    let op = match p.operator {
+                        token::Token::Minus => code::Opcode::Negate,
+                        token::Token::Bang => code::Opcode::Not,
+                        _ => panic!("unhandled prefix operator: {:?}", p.operator),
+                    };
+
+                    self.emit(op, vec![])?;
                 }
                 _ => panic!("unhandled expression type"),
             },
@@ -85,7 +96,7 @@ impl Compiler {
             token::Token::Equal => code::Opcode::Equal,
             token::Token::NotEqual => code::Opcode::NotEqual,
             token::Token::GreaterThan => code::Opcode::GreaterThan,
-            _ => panic!("unhandled operator: {:?}", e.operator),
+            _ => panic!("unhandled infix operator: {:?}", e.operator),
         };
 
         self.emit(op, vec![])?;

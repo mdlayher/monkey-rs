@@ -20,6 +20,8 @@ fn code_make_parse_ok() {
         (Opcode::Pop, vec![], vec![Opcode::Pop as u8]),
         (Opcode::True, vec![], vec![Opcode::True as u8]),
         (Opcode::False, vec![], vec![Opcode::False as u8]),
+        (Opcode::Negate, vec![], vec![Opcode::Negate as u8]),
+        (Opcode::Not, vec![], vec![Opcode::Not as u8]),
     ];
 
     for (op, operands, want) in &tests {
@@ -93,6 +95,16 @@ fn code_make_error() {
         ),
         (
             Opcode::GreaterThan,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Negate,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Not,
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),

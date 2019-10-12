@@ -25,6 +25,10 @@ fn vm_run_ok() {
         ("true == true", TRUE),
         ("true != false", TRUE),
         ("(1 < 2) == true", TRUE),
+        ("-1", object::Object::Integer(-1)),
+        ("!!true", TRUE),
+        ("!5", FALSE),
+        ("!!5", TRUE),
     ];
 
     for (input, want) in &tests {

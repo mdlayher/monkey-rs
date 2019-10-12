@@ -128,6 +128,48 @@ fn compiler_ok() {
             ],
             vec![object::Object::Integer(4), object::Object::Integer(2)],
         ),
+        (
+            "-1; -2;",
+            vec![
+                // 1
+                code::Opcode::Constant as u8,
+                0x00,
+                0x00,
+                // negate
+                code::Opcode::Negate as u8,
+                // pop
+                code::Opcode::Pop as u8,
+                // 2
+                code::Opcode::Constant as u8,
+                0x00,
+                0x01,
+                // negate
+                code::Opcode::Negate as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![object::Object::Integer(1), object::Object::Integer(2)],
+        ),
+        (
+            "!true; !!false;",
+            vec![
+                // true
+                code::Opcode::True as u8,
+                // not
+                code::Opcode::Not as u8,
+                // pop
+                code::Opcode::Pop as u8,
+                // false
+                code::Opcode::False as u8,
+                // not
+                code::Opcode::Not as u8,
+                // not
+                code::Opcode::Not as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
