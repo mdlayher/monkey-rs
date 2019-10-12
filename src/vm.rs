@@ -5,34 +5,38 @@ extern crate byteorder;
 
 use std::{error, fmt, io, result};
 
-use crate::{code, compiler, object};
+use crate::{
+    code::{BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
+    compiler,
+    object::Object,
+};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
 // Boolean object constants for use in the VM type.
-const TRUE: object::Object = object::Object::Boolean(true);
-const FALSE: object::Object = object::Object::Boolean(false);
+const TRUE: Object = Object::Boolean(true);
+const FALSE: Object = Object::Boolean(false);
 
 pub struct Vm<'a> {
-    stack: &'a mut Vec<object::Object>,
+    stack: &'a mut Vec<Object>,
     sp: usize,
 }
 
-pub fn new_stack() -> Vec<object::Object> {
+pub fn new_stack() -> Vec<Object> {
     // TODO(mdlayher): growable stacks.
-    vec![object::Object::Null; 64]
+    vec![Object::Null; 64]
 }
 
 impl<'a> Vm<'a> {
-    pub fn new(stack: &'a mut Vec<object::Object>) -> Self {
+    pub fn new(stack: &'a mut Vec<Object>) -> Self {
         Vm { stack, sp: 0 }
     }
 
-    pub fn last_popped(&self) -> &object::Object {
+    pub fn last_popped(&self) -> &Object {
         &self.stack[self.sp]
     }
 
-    pub fn dump_stack(&self) -> Vec<object::Object> {
+    pub fn dump_stack(&self) -> Vec<Object> {
         self.stack.iter().take(self.sp).cloned().collect()
     }
 
@@ -41,95 +45,46 @@ impl<'a> Vm<'a> {
         let mut c = io::Cursor::new(&bc.instructions);
 
         while c.position() < len {
-            let op = code::Opcode::from(c.read_u8().map_err(Error::Io)?);
+            let op = Opcode::from(c.read_u8().map_err(Error::Io)?);
 
             match op {
-                code::Opcode::Constant => {
-                    let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                    self.push(bc.constants[idx as usize].clone())?;
-                }
-                // TODO(mdlayher): split opcodes by category so the compiler
-                // can enforce which ones are binary ops and etc?
-                code::Opcode::Add
-                | code::Opcode::Sub
-                | code::Opcode::Mul
-                | code::Opcode::Div
-                | code::Opcode::Mod
-                | code::Opcode::Equal
-                | code::Opcode::NotEqual
-                | code::Opcode::GreaterThan => {
-                    self.binary_op(op)?;
-                }
-                code::Opcode::Pop => {
-                    self.pop_n(1);
-                }
-                code::Opcode::True => {
-                    self.push(TRUE)?;
-                }
-                code::Opcode::False => {
-                    self.push(FALSE)?;
-                }
-                code::Opcode::Negate | code::Opcode::Not => {
-                    self.prefix_op(op)?;
-                }
+                Opcode::Control(ctrl) => match ctrl {
+                    ControlOpcode::Constant => {
+                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                        self.push(bc.constants[idx as usize].clone())?;
+                    }
+                    ControlOpcode::Pop => {
+                        self.pop_n(1);
+                    }
+                    ControlOpcode::True => {
+                        self.push(TRUE)?;
+                    }
+                    ControlOpcode::False => {
+                        self.push(FALSE)?;
+                    }
+                },
+                Opcode::Unary(u) => self.unary_op(u)?,
+                Opcode::Binary(b) => self.binary_op(b)?,
             };
         }
 
         Ok(())
     }
 
-    fn binary_op(&mut self, op: code::Opcode) -> Result<()> {
-        let args = self.pop_n(2);
-        match args {
-            Some(args) => match (&args[0], &args[1]) {
-                // Integer operations.
-                (object::Object::Integer(r), object::Object::Integer(l)) => {
-                    let out = match op {
-                        code::Opcode::Add => object::Object::Integer(l + r),
-                        code::Opcode::Sub => object::Object::Integer(l - r),
-                        code::Opcode::Mul => object::Object::Integer(l * r),
-                        code::Opcode::Div => object::Object::Integer(l / r),
-                        code::Opcode::Mod => object::Object::Integer(l % r),
-                        code::Opcode::Equal => object::Object::Boolean(l == r),
-                        code::Opcode::NotEqual => object::Object::Boolean(l != r),
-                        code::Opcode::GreaterThan => object::Object::Boolean(l > r),
-                        _ => panic!("unhandled integer binary op: {:?}", op),
-                    };
-
-                    self.push(out)
-                }
-                // Boolean operations.
-                (object::Object::Boolean(r), object::Object::Boolean(l)) => {
-                    let out = match op {
-                        code::Opcode::Equal => l == r,
-                        code::Opcode::NotEqual => l != r,
-                        _ => panic!("unhandled boolean binary op: {:?}", op),
-                    };
-
-                    self.push(object::Object::Boolean(out))
-                }
-                // Invalid combination.
-                (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
-            },
-            None => Err(Error::Internal(ErrorKind::StackEmpty)),
-        }
-    }
-
-    fn prefix_op(&mut self, op: code::Opcode) -> Result<()> {
+    fn unary_op(&mut self, op: UnaryOpcode) -> Result<()> {
         let args = self.pop_n(1);
         match args {
             Some(args) => {
                 let out = match (op, &args[0]) {
-                    (code::Opcode::Not, _) => match args[0] {
-                        object::Object::Boolean(b) => object::Object::Boolean(!b),
+                    (UnaryOpcode::Not, _) => match args[0] {
+                        Object::Boolean(b) => Object::Boolean(!b),
                         // According to the compiler book, all non-boolean false
                         // values are considered truthy and should return false.
                         _ => FALSE,
                     },
-                    (code::Opcode::Negate, object::Object::Integer(i)) => {
-                        object::Object::Integer(-i)
-                    }
-                    _ => panic!("unhandled prefix operation: {:?} {:?}", op, args[0]),
+                    (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
+                    // Invalid combination.
+                    (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
                 };
 
                 self.push(out)
@@ -138,7 +93,43 @@ impl<'a> Vm<'a> {
         }
     }
 
-    fn push(&mut self, obj: object::Object) -> Result<()> {
+    fn binary_op(&mut self, op: BinaryOpcode) -> Result<()> {
+        let args = self.pop_n(2);
+        match args {
+            Some(args) => match (&args[0], &args[1]) {
+                // Integer operations.
+                (Object::Integer(r), Object::Integer(l)) => {
+                    let out = match op {
+                        BinaryOpcode::Add => Object::Integer(l + r),
+                        BinaryOpcode::Sub => Object::Integer(l - r),
+                        BinaryOpcode::Mul => Object::Integer(l * r),
+                        BinaryOpcode::Div => Object::Integer(l / r),
+                        BinaryOpcode::Mod => Object::Integer(l % r),
+                        BinaryOpcode::Equal => Object::Boolean(l == r),
+                        BinaryOpcode::NotEqual => Object::Boolean(l != r),
+                        BinaryOpcode::GreaterThan => Object::Boolean(l > r),
+                    };
+
+                    self.push(out)
+                }
+                // Boolean operations.
+                (Object::Boolean(r), Object::Boolean(l)) => {
+                    let out = match op {
+                        BinaryOpcode::Equal => l == r,
+                        BinaryOpcode::NotEqual => l != r,
+                        _ => panic!("unhandled boolean binary op: {:?}", op),
+                    };
+
+                    self.push(Object::Boolean(out))
+                }
+                // Invalid combination.
+                (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
+            },
+            None => Err(Error::Internal(ErrorKind::StackEmpty)),
+        }
+    }
+
+    fn push(&mut self, obj: Object) -> Result<()> {
         if self.sp >= self.stack.len() {
             return Err(Error::Internal(ErrorKind::StackOverflow));
         }
@@ -148,7 +139,7 @@ impl<'a> Vm<'a> {
         Ok(())
     }
 
-    fn pop_n(&mut self, n: usize) -> Option<Vec<object::Object>> {
+    fn pop_n(&mut self, n: usize) -> Option<Vec<Object>> {
         if self.sp == 0 {
             // Nothing on the stack, nothing to do.
             return None;

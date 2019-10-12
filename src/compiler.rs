@@ -1,16 +1,19 @@
 //! A compiler for the Monkey programming language from
 //! <https://compilerbook.com/>.
 
-use std::error;
-use std::fmt;
-use std::result;
+use std::{error, fmt, result};
 
-use crate::{ast, code, object, token};
+use crate::{
+    ast,
+    code::{self, BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
+    object::Object,
+    token::Token,
+};
 
 #[derive(Default)]
 pub struct Compiler {
     instructions: Vec<u8>,
-    constants: Vec<object::Object>,
+    constants: Vec<Object>,
 }
 
 impl Compiler {
@@ -28,35 +31,35 @@ impl Compiler {
             ast::Node::Expression(e) => match e {
                 ast::Expression::Boolean(b) => {
                     let op = if b {
-                        code::Opcode::True
+                        ControlOpcode::True
                     } else {
-                        code::Opcode::False
+                        ControlOpcode::False
                     };
 
-                    self.emit(op, vec![])?;
+                    self.emit(Opcode::Control(op), vec![])?;
                 }
                 ast::Expression::Integer(i) => {
-                    let oper = vec![self.add_constant(object::Object::Integer(i.value))];
-                    self.emit(code::Opcode::Constant, oper)?;
+                    let oper = vec![self.add_constant(Object::Integer(i.value))];
+                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
                 ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Prefix(p) => {
                     self.compile(ast::Node::Expression(*p.right))?;
 
                     let op = match p.operator {
-                        token::Token::Minus => code::Opcode::Negate,
-                        token::Token::Bang => code::Opcode::Not,
+                        Token::Minus => UnaryOpcode::Negate,
+                        Token::Bang => UnaryOpcode::Not,
                         _ => panic!("unhandled prefix operator: {:?}", p.operator),
                     };
 
-                    self.emit(op, vec![])?;
+                    self.emit(Opcode::Unary(op), vec![])?;
                 }
                 _ => panic!("unhandled expression type"),
             },
             ast::Node::Statement(s) => match s {
                 ast::Statement::Expression(e) => {
                     self.compile(ast::Node::Expression(e))?;
-                    self.emit(code::Opcode::Pop, vec![])?;
+                    self.emit(Opcode::Control(ControlOpcode::Pop), vec![])?;
                 }
                 _ => panic!("unhandled statement type"),
             },
@@ -75,11 +78,11 @@ impl Compiler {
     fn compile_infix_expression(&mut self, e: ast::InfixExpression) -> Result<()> {
         // Reorder less-than expressions to greater-than by compiling RHS and
         // then LHS to simplify bytecode.
-        if e.operator == token::Token::LessThan {
+        if e.operator == Token::LessThan {
             self.compile(ast::Node::Expression(*e.right))?;
             self.compile(ast::Node::Expression(*e.left))?;
 
-            self.emit(code::Opcode::GreaterThan, vec![])?;
+            self.emit(Opcode::Binary(BinaryOpcode::GreaterThan), vec![])?;
             return Ok(());
         }
 
@@ -88,27 +91,27 @@ impl Compiler {
         self.compile(ast::Node::Expression(*e.right))?;
 
         let op = match e.operator {
-            token::Token::Plus => code::Opcode::Add,
-            token::Token::Minus => code::Opcode::Sub,
-            token::Token::Asterisk => code::Opcode::Mul,
-            token::Token::Slash => code::Opcode::Div,
-            token::Token::Percent => code::Opcode::Mod,
-            token::Token::Equal => code::Opcode::Equal,
-            token::Token::NotEqual => code::Opcode::NotEqual,
-            token::Token::GreaterThan => code::Opcode::GreaterThan,
+            Token::Plus => BinaryOpcode::Add,
+            Token::Minus => BinaryOpcode::Sub,
+            Token::Asterisk => BinaryOpcode::Mul,
+            Token::Slash => BinaryOpcode::Div,
+            Token::Percent => BinaryOpcode::Mod,
+            Token::Equal => BinaryOpcode::Equal,
+            Token::NotEqual => BinaryOpcode::NotEqual,
+            Token::GreaterThan => BinaryOpcode::GreaterThan,
             _ => panic!("unhandled infix operator: {:?}", e.operator),
         };
 
-        self.emit(op, vec![])?;
+        self.emit(Opcode::Binary(op), vec![])?;
         Ok(())
     }
 
-    fn add_constant(&mut self, obj: object::Object) -> usize {
+    fn add_constant(&mut self, obj: Object) -> usize {
         self.constants.push(obj);
         self.constants.len() - 1
     }
 
-    fn emit(&mut self, op: code::Opcode, operands: Vec<usize>) -> Result<usize> {
+    fn emit(&mut self, op: Opcode, operands: Vec<usize>) -> Result<usize> {
         let ins = code::make(op, &operands).map_err(Error::Code)?;
         Ok(self.add_instruction(&ins))
     }
@@ -122,7 +125,7 @@ impl Compiler {
 
 pub struct Bytecode {
     pub instructions: Vec<u8>,
-    pub constants: Vec<object::Object>,
+    pub constants: Vec<Object>,
 }
 
 /// A Result type specialized use with for an Error.

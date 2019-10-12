@@ -3,10 +3,7 @@
 
 extern crate byteorder;
 
-use std::error;
-use std::fmt;
-use std::io;
-use std::result;
+use std::{error, fmt, io, result};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
@@ -16,44 +13,86 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 /// An opcode for the Monkey virtual machine.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Opcode {
-    // Base operations.
+    Control(ControlOpcode),
+    Unary(UnaryOpcode),
+    Binary(BinaryOpcode),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ControlOpcode {
     Constant = 0x00,
     Pop = 0x01,
-    // Math operations.
-    Add = 0x10,
-    Sub = 0x11,
-    Mul = 0x12,
-    Div = 0x13,
-    Mod = 0x14,
-    Negate = 0x15,
-    // Boolean operations.
-    True = 0x20,
-    False = 0x21,
-    Equal = 0x22,
-    NotEqual = 0x23,
-    GreaterThan = 0x24,
-    Not = 0x25,
+    True = 0x02,
+    False = 0x03,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum UnaryOpcode {
+    Negate = 0x10,
+    Not = 0x11,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BinaryOpcode {
+    Add = 0x20,
+    Sub = 0x21,
+    Mul = 0x22,
+    Div = 0x23,
+    Mod = 0x24,
+    Equal = 0x25,
+    NotEqual = 0x26,
+    GreaterThan = 0x27,
 }
 
 impl From<u8> for Opcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
         match v {
-            0x00 => Opcode::Constant,
-            0x01 => Opcode::Pop,
-            0x10 => Opcode::Add,
-            0x11 => Opcode::Sub,
-            0x12 => Opcode::Mul,
-            0x13 => Opcode::Div,
-            0x14 => Opcode::Mod,
-            0x15 => Opcode::Negate,
-            0x20 => Opcode::True,
-            0x21 => Opcode::False,
-            0x22 => Opcode::Equal,
-            0x23 => Opcode::NotEqual,
-            0x24 => Opcode::GreaterThan,
-            0x25 => Opcode::Not,
+            0x00..=0x0f => Self::Control(ControlOpcode::from(v)),
+            0x10..=0x1f => Self::Unary(UnaryOpcode::from(v)),
+            0x20..=0x2f => Self::Binary(BinaryOpcode::from(v)),
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
+        }
+    }
+}
+
+impl From<u8> for ControlOpcode {
+    /// Convert from a u8 to an Opcode.
+    fn from(v: u8) -> Self {
+        match v {
+            0x00 => ControlOpcode::Constant,
+            0x01 => ControlOpcode::Pop,
+            0x02 => ControlOpcode::True,
+            0x03 => ControlOpcode::False,
+            _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
+        }
+    }
+}
+
+impl From<u8> for UnaryOpcode {
+    /// Convert from a u8 to an Opcode.
+    fn from(v: u8) -> Self {
+        match v {
+            0x10 => UnaryOpcode::Negate,
+            0x11 => UnaryOpcode::Not,
+            _ => panic!("unhandled u8 to UnaryOpcode conversion: {}", v),
+        }
+    }
+}
+
+impl From<u8> for BinaryOpcode {
+    /// Convert from a u8 to an Opcode.
+    fn from(v: u8) -> Self {
+        match v {
+            0x20 => BinaryOpcode::Add,
+            0x21 => BinaryOpcode::Sub,
+            0x22 => BinaryOpcode::Mul,
+            0x23 => BinaryOpcode::Div,
+            0x24 => BinaryOpcode::Mod,
+            0x25 => BinaryOpcode::Equal,
+            0x26 => BinaryOpcode::NotEqual,
+            0x27 => BinaryOpcode::GreaterThan,
+            _ => panic!("unhandled u8 to BinaryOpcode conversion: {}", v),
         }
     }
 }
@@ -84,7 +123,13 @@ pub fn make(op: Opcode, operands: &[usize]) -> Result<Vec<u8>> {
             .map(|w| *w as usize)
             .sum::<usize>(),
     );
-    buf.push(op as u8);
+
+    let byte = match op {
+        Opcode::Control(c) => c as u8,
+        Opcode::Unary(u) => u as u8,
+        Opcode::Binary(b) => b as u8,
+    };
+    buf.push(byte);
 
     // Write the instruction into the vector.
     for (oper, width) in operands.iter().zip(def.operand_widths.iter()) {
@@ -158,61 +203,67 @@ struct Definition<'a> {
 /// Look up the `Definition` for a given `Opcode`.
 fn lookup<'a>(op: Opcode) -> Definition<'a> {
     match op {
-        Opcode::Constant => Definition {
-            name: "Constant",
-            operand_widths: vec![Width::Two],
+        Opcode::Control(c) => match c {
+            ControlOpcode::Constant => Definition {
+                name: "Constant",
+                operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::Pop => Definition {
+                name: "Pop",
+                operand_widths: vec![],
+            },
+            ControlOpcode::True => Definition {
+                name: "True",
+                operand_widths: vec![],
+            },
+            ControlOpcode::False => Definition {
+                name: "False",
+                operand_widths: vec![],
+            },
         },
-        Opcode::Pop => Definition {
-            name: "Pop",
-            operand_widths: vec![],
+        Opcode::Unary(u) => match u {
+            UnaryOpcode::Negate => Definition {
+                name: "Negate",
+                operand_widths: vec![],
+            },
+            UnaryOpcode::Not => Definition {
+                name: "Not",
+                operand_widths: vec![],
+            },
         },
-        Opcode::Add => Definition {
-            name: "Add",
-            operand_widths: vec![],
-        },
-        Opcode::Sub => Definition {
-            name: "Sub",
-            operand_widths: vec![],
-        },
-        Opcode::Mul => Definition {
-            name: "Mul",
-            operand_widths: vec![],
-        },
-        Opcode::Div => Definition {
-            name: "Div",
-            operand_widths: vec![],
-        },
-        Opcode::Mod => Definition {
-            name: "Mod",
-            operand_widths: vec![],
-        },
-        Opcode::Negate => Definition {
-            name: "Negate",
-            operand_widths: vec![],
-        },
-        Opcode::True => Definition {
-            name: "True",
-            operand_widths: vec![],
-        },
-        Opcode::False => Definition {
-            name: "False",
-            operand_widths: vec![],
-        },
-        Opcode::Equal => Definition {
-            name: "Equal",
-            operand_widths: vec![],
-        },
-        Opcode::NotEqual => Definition {
-            name: "NotEqual",
-            operand_widths: vec![],
-        },
-        Opcode::GreaterThan => Definition {
-            name: "GreaterThan",
-            operand_widths: vec![],
-        },
-        Opcode::Not => Definition {
-            name: "Not",
-            operand_widths: vec![],
+        Opcode::Binary(b) => match b {
+            BinaryOpcode::Add => Definition {
+                name: "Add",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Sub => Definition {
+                name: "Sub",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Mul => Definition {
+                name: "Mul",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Div => Definition {
+                name: "Div",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Mod => Definition {
+                name: "Mod",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Equal => Definition {
+                name: "Equal",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::NotEqual => Definition {
+                name: "NotEqual",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::GreaterThan => Definition {
+                name: "GreaterThan",
+                operand_widths: vec![],
+            },
         },
     }
 }

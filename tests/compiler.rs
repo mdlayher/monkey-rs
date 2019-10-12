@@ -1,7 +1,6 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::compiler::*;
-use mdl_monkey::{ast, code, lexer, object, parser};
+use mdl_monkey::{ast, code::*, compiler::*, lexer, object::Object, parser};
 
 #[test]
 fn compiler_ok() {
@@ -10,48 +9,44 @@ fn compiler_ok() {
             "1 + 2",
             vec![
                 // 1
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // +, pop
-                code::Opcode::Add as u8,
-                code::Opcode::Pop as u8,
+                BinaryOpcode::Add as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(1), object::Object::Integer(2)],
+            vec![Object::Integer(1), Object::Integer(2)],
         ),
         (
             "2; 4;",
             vec![
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
-                // pop
-                code::Opcode::Pop as u8,
+                ControlOpcode::Pop as u8,
                 // 4
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
-                // pop
-                code::Opcode::Pop as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(2), object::Object::Integer(4)],
+            vec![Object::Integer(2), Object::Integer(4)],
         ),
         (
             "true; false;",
             vec![
                 // true
-                code::Opcode::True as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                ControlOpcode::True as u8,
+                ControlOpcode::Pop as u8,
                 // false
-                code::Opcode::False as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                ControlOpcode::False as u8,
+                ControlOpcode::Pop as u8,
             ],
             vec![],
         ),
@@ -59,114 +54,105 @@ fn compiler_ok() {
             "2 == 4",
             vec![
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // equal
-                code::Opcode::Equal as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                BinaryOpcode::Equal as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(2), object::Object::Integer(4)],
+            vec![Object::Integer(2), Object::Integer(4)],
         ),
         (
             "2 != 4",
             vec![
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // not equal
-                code::Opcode::NotEqual as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                BinaryOpcode::NotEqual as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(2), object::Object::Integer(4)],
+            vec![Object::Integer(2), Object::Integer(4)],
         ),
         (
             "2 > 4",
             vec![
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // greater than
-                code::Opcode::GreaterThan as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                BinaryOpcode::GreaterThan as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(2), object::Object::Integer(4)],
+            vec![Object::Integer(2), Object::Integer(4)],
         ),
         (
             "2 < 4",
             // Compiler reorders the less-than to a greater-than operation.
             vec![
                 // 4
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // greater than
-                code::Opcode::GreaterThan as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                BinaryOpcode::GreaterThan as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(4), object::Object::Integer(2)],
+            vec![Object::Integer(4), Object::Integer(2)],
         ),
         (
             "-1; -2;",
             vec![
                 // 1
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
                 // negate
-                code::Opcode::Negate as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                UnaryOpcode::Negate as u8,
+                ControlOpcode::Pop as u8,
                 // 2
-                code::Opcode::Constant as u8,
+                ControlOpcode::Constant as u8,
                 0x00,
                 0x01,
                 // negate
-                code::Opcode::Negate as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                UnaryOpcode::Negate as u8,
+                ControlOpcode::Pop as u8,
             ],
-            vec![object::Object::Integer(1), object::Object::Integer(2)],
+            vec![Object::Integer(1), Object::Integer(2)],
         ),
         (
             "!true; !!false;",
             vec![
                 // true
-                code::Opcode::True as u8,
+                ControlOpcode::True as u8,
                 // not
-                code::Opcode::Not as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                UnaryOpcode::Not as u8,
+                ControlOpcode::Pop as u8,
                 // false
-                code::Opcode::False as u8,
-                // not
-                code::Opcode::Not as u8,
-                // not
-                code::Opcode::Not as u8,
-                // pop
-                code::Opcode::Pop as u8,
+                ControlOpcode::False as u8,
+                // not, not
+                UnaryOpcode::Not as u8,
+                UnaryOpcode::Not as u8,
+                ControlOpcode::Pop as u8,
             ],
             vec![],
         ),
@@ -182,8 +168,8 @@ fn compiler_ok() {
 }
 
 fn assert_instructions(want: &[u8], got: &[u8]) {
-    let want_ins = code::Instructions::parse(want).expect("failed to parse want instructions");
-    let got_ins = code::Instructions::parse(got).expect("failed to parse got instructions");
+    let want_ins = Instructions::parse(want).expect("failed to parse want instructions");
+    let got_ins = Instructions::parse(got).expect("failed to parse got instructions");
 
     assert_eq!(
         want_ins, got_ins,

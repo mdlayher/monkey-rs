@@ -8,20 +8,75 @@ use std::io;
 fn code_make_parse_ok() {
     let tests = vec![
         (
-            Opcode::Constant,
+            Opcode::Control(ControlOpcode::Constant),
             vec![65534],
-            vec![Opcode::Constant as u8, 0xff, 0xfe],
+            vec![ControlOpcode::Constant as u8, 0xff, 0xfe],
         ),
-        (Opcode::Add, vec![], vec![Opcode::Add as u8]),
-        (Opcode::Sub, vec![], vec![Opcode::Sub as u8]),
-        (Opcode::Mul, vec![], vec![Opcode::Mul as u8]),
-        (Opcode::Div, vec![], vec![Opcode::Div as u8]),
-        (Opcode::Mod, vec![], vec![Opcode::Mod as u8]),
-        (Opcode::Pop, vec![], vec![Opcode::Pop as u8]),
-        (Opcode::True, vec![], vec![Opcode::True as u8]),
-        (Opcode::False, vec![], vec![Opcode::False as u8]),
-        (Opcode::Negate, vec![], vec![Opcode::Negate as u8]),
-        (Opcode::Not, vec![], vec![Opcode::Not as u8]),
+        (
+            Opcode::Control(ControlOpcode::Pop),
+            vec![],
+            vec![ControlOpcode::Pop as u8],
+        ),
+        (
+            Opcode::Control(ControlOpcode::True),
+            vec![],
+            vec![ControlOpcode::True as u8],
+        ),
+        (
+            Opcode::Control(ControlOpcode::False),
+            vec![],
+            vec![ControlOpcode::False as u8],
+        ),
+        (
+            Opcode::Unary(UnaryOpcode::Negate),
+            vec![],
+            vec![UnaryOpcode::Negate as u8],
+        ),
+        (
+            Opcode::Unary(UnaryOpcode::Not),
+            vec![],
+            vec![UnaryOpcode::Not as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Add),
+            vec![],
+            vec![BinaryOpcode::Add as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Sub),
+            vec![],
+            vec![BinaryOpcode::Sub as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Mul),
+            vec![],
+            vec![BinaryOpcode::Mul as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Div),
+            vec![],
+            vec![BinaryOpcode::Div as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Mod),
+            vec![],
+            vec![BinaryOpcode::Mod as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::Equal),
+            vec![],
+            vec![BinaryOpcode::Equal as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::NotEqual),
+            vec![],
+            vec![BinaryOpcode::NotEqual as u8],
+        ),
+        (
+            Opcode::Binary(BinaryOpcode::GreaterThan),
+            vec![],
+            vec![BinaryOpcode::GreaterThan as u8],
+        ),
     ];
 
     for (op, operands, want) in &tests {
@@ -39,72 +94,72 @@ fn code_make_parse_ok() {
 fn code_make_error() {
     let tests = vec![
         (
-            Opcode::Constant,
+            Opcode::Control(ControlOpcode::Constant),
             vec![],
             ErrorKind::BadNumberOperands { want: 1, got: 0 },
         ),
         (
-            Opcode::Pop,
+            Opcode::Control(ControlOpcode::Pop),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Add,
+            Opcode::Control(ControlOpcode::True),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Sub,
+            Opcode::Control(ControlOpcode::False),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Mul,
+            Opcode::Unary(UnaryOpcode::Negate),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Div,
+            Opcode::Unary(UnaryOpcode::Not),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Mod,
+            Opcode::Binary(BinaryOpcode::Add),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::True,
+            Opcode::Binary(BinaryOpcode::Sub),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::False,
+            Opcode::Binary(BinaryOpcode::Mul),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Equal,
+            Opcode::Binary(BinaryOpcode::Div),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::NotEqual,
+            Opcode::Binary(BinaryOpcode::Mod),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::GreaterThan,
+            Opcode::Binary(BinaryOpcode::Equal),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Negate,
+            Opcode::Binary(BinaryOpcode::NotEqual),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
-            Opcode::Not,
+            Opcode::Binary(BinaryOpcode::GreaterThan),
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),

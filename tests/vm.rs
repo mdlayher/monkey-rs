@@ -1,21 +1,21 @@
 extern crate mdl_monkey;
 
 use mdl_monkey::vm::*;
-use mdl_monkey::{ast, compiler, lexer, object, parser};
+use mdl_monkey::{ast, compiler, lexer, object::Object, parser};
 
-const TRUE: object::Object = object::Object::Boolean(true);
-const FALSE: object::Object = object::Object::Boolean(false);
+const TRUE: Object = Object::Boolean(true);
+const FALSE: Object = Object::Boolean(false);
 
 #[test]
 fn vm_run_ok() {
     let tests = vec![
-        ("", object::Object::Null),
-        ("1", object::Object::Integer(1)),
-        ("1 + 2", object::Object::Integer(3)),
-        ("2 - 1 - 1", object::Object::Integer(0)),
-        ("2 * 2", object::Object::Integer(4)),
-        ("10 / 3", object::Object::Integer(3)),
-        ("10 % 3", object::Object::Integer(1)),
+        ("", Object::Null),
+        ("1", Object::Integer(1)),
+        ("1 + 2", Object::Integer(3)),
+        ("2 - 1 - 1", Object::Integer(0)),
+        ("2 * 2", Object::Integer(4)),
+        ("10 / 3", Object::Integer(3)),
+        ("10 % 3", Object::Integer(1)),
         ("true", TRUE),
         ("false", FALSE),
         ("1 == 1", TRUE),
@@ -25,7 +25,7 @@ fn vm_run_ok() {
         ("true == true", TRUE),
         ("true != false", TRUE),
         ("(1 < 2) == true", TRUE),
-        ("-1", object::Object::Integer(-1)),
+        ("-1", Object::Integer(-1)),
         ("!!true", TRUE),
         ("!5", FALSE),
         ("!!5", TRUE),
