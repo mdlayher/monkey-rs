@@ -47,16 +47,16 @@ impl<'a> Vm<'a> {
                 Opcode::Control(ctrl) => match ctrl {
                     ControlOpcode::Constant => {
                         let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                        self.push(bc.constants[idx as usize].clone())?;
+                        self.push(bc.constants[idx as usize].clone());
                     }
                     ControlOpcode::Pop => {
                         self.pop_n(1);
                     }
                     ControlOpcode::True => {
-                        self.push(object::TRUE)?;
+                        self.push(object::TRUE);
                     }
                     ControlOpcode::False => {
-                        self.push(object::FALSE)?;
+                        self.push(object::FALSE);
                     }
                 },
                 Opcode::Unary(u) => self.unary_op(u)?,
@@ -83,7 +83,8 @@ impl<'a> Vm<'a> {
                     (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
                 };
 
-                self.push(out)
+                self.push(out);
+                Ok(())
             }
             None => Err(Error::Internal(ErrorKind::StackEmpty)),
         }
@@ -106,7 +107,8 @@ impl<'a> Vm<'a> {
                         BinaryOpcode::GreaterThan => Object::Boolean(l > r),
                     };
 
-                    self.push(out)
+                    self.push(out);
+                    Ok(())
                 }
                 // Boolean operations.
                 (Object::Boolean(r), Object::Boolean(l)) => {
@@ -116,7 +118,8 @@ impl<'a> Vm<'a> {
                         _ => panic!("unhandled boolean binary op: {:?}", op),
                     };
 
-                    self.push(Object::Boolean(out))
+                    self.push(Object::Boolean(out));
+                    Ok(())
                 }
                 // Invalid combination.
                 (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
@@ -125,14 +128,16 @@ impl<'a> Vm<'a> {
         }
     }
 
-    fn push(&mut self, obj: Object) -> Result<()> {
+    fn push(&mut self, obj: Object) {
         if self.sp >= self.stack.len() {
-            return Err(Error::Internal(ErrorKind::StackOverflow));
+            // Grow the stack to push this element.
+            self.stack.push(obj);
+        } else {
+            // Use an existing slot on the stack.
+            self.stack[self.sp] = obj;
         }
 
-        self.stack[self.sp] = obj;
         self.sp += 1;
-        Ok(())
     }
 
     fn pop_n(&mut self, n: usize) -> Option<Vec<Object>> {
@@ -194,7 +199,6 @@ impl error::Error for Error {
 pub enum ErrorKind {
     BadArguments, // TODO(mdlayher): more debug information.
     StackEmpty,
-    StackOverflow,
 }
 
 impl fmt::Display for ErrorKind {
@@ -202,7 +206,6 @@ impl fmt::Display for ErrorKind {
         match self {
             ErrorKind::BadArguments => write!(f, "bad arguments for operation"),
             ErrorKind::StackEmpty => write!(f, "stack empty while performing operation"),
-            ErrorKind::StackOverflow => write!(f, "stack overflow"),
         }
     }
 }

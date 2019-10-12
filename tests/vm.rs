@@ -46,6 +46,21 @@ fn vm_run_ok() {
     }
 }
 
+#[test]
+fn vm_grow_stack() {
+    // Start with an empty stack and make the VM grow the stack as more values
+    // are added.
+    let mut stack = vec![];
+    let mut vm = Vm::new(&mut stack);
+    vm.run(&compile("1 + (1 + (1 + (1 + 1)))"))
+        .expect("failed to run VM");
+
+    // Expect the stack to have grown at least large enough to hold all 5
+    // elements.
+    assert!(stack.len() > 4, "stack did not grow length");
+    assert!(stack.capacity() > 4, "stack did not grow capacity");
+}
+
 fn compile(input: &str) -> compiler::Bytecode {
     let l = lexer::Lexer::new(input);
 
