@@ -8,6 +8,10 @@ use std::error;
 use std::fmt;
 use std::result;
 
+/// Boolean object constants for true and false for easy use.
+pub const TRUE: Object = Object::Boolean(true);
+pub const FALSE: Object = Object::Boolean(false);
+
 /// Objects produced when evaluating Monkey source code, along with their
 /// associated data if applicable.
 #[derive(Clone, Debug, PartialEq)]

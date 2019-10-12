@@ -8,14 +8,10 @@ use std::{error, fmt, io, result};
 use crate::{
     code::{BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
     compiler,
-    object::Object,
+    object::{self, Object},
 };
 
 use byteorder::{BigEndian, ReadBytesExt};
-
-// Boolean object constants for use in the VM type.
-const TRUE: Object = Object::Boolean(true);
-const FALSE: Object = Object::Boolean(false);
 
 pub struct Vm<'a> {
     stack: &'a mut Vec<Object>,
@@ -57,10 +53,10 @@ impl<'a> Vm<'a> {
                         self.pop_n(1);
                     }
                     ControlOpcode::True => {
-                        self.push(TRUE)?;
+                        self.push(object::TRUE)?;
                     }
                     ControlOpcode::False => {
-                        self.push(FALSE)?;
+                        self.push(object::FALSE)?;
                     }
                 },
                 Opcode::Unary(u) => self.unary_op(u)?,
@@ -80,7 +76,7 @@ impl<'a> Vm<'a> {
                         Object::Boolean(b) => Object::Boolean(!b),
                         // According to the compiler book, all non-boolean false
                         // values are considered truthy and should return false.
-                        _ => FALSE,
+                        _ => object::FALSE,
                     },
                     (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
                     // Invalid combination.
