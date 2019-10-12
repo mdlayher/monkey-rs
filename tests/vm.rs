@@ -3,6 +3,9 @@ extern crate mdl_monkey;
 use mdl_monkey::vm::*;
 use mdl_monkey::{ast, compiler, lexer, object, parser};
 
+const TRUE: object::Object = object::Object::Boolean(true);
+const FALSE: object::Object = object::Object::Boolean(false);
+
 #[test]
 fn vm_run_ok() {
     let tests = vec![
@@ -13,8 +16,15 @@ fn vm_run_ok() {
         ("2 * 2", object::Object::Integer(4)),
         ("10 / 3", object::Object::Integer(3)),
         ("10 % 3", object::Object::Integer(1)),
-        ("true", object::Object::Boolean(true)),
-        ("false", object::Object::Boolean(false)),
+        ("true", TRUE),
+        ("false", FALSE),
+        ("1 == 1", TRUE),
+        ("1 != 1", FALSE),
+        ("1 < 2", TRUE),
+        ("1 > 2", FALSE),
+        ("true == true", TRUE),
+        ("true != false", TRUE),
+        ("(1 < 2) == true", TRUE),
     ];
 
     for (input, want) in &tests {

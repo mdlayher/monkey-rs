@@ -13,6 +13,10 @@ fn code_make_parse_ok() {
             vec![Opcode::Constant as u8, 0xff, 0xfe],
         ),
         (Opcode::Add, vec![], vec![Opcode::Add as u8]),
+        (Opcode::Sub, vec![], vec![Opcode::Sub as u8]),
+        (Opcode::Mul, vec![], vec![Opcode::Mul as u8]),
+        (Opcode::Div, vec![], vec![Opcode::Div as u8]),
+        (Opcode::Mod, vec![], vec![Opcode::Mod as u8]),
         (Opcode::Pop, vec![], vec![Opcode::Pop as u8]),
         (Opcode::True, vec![], vec![Opcode::True as u8]),
         (Opcode::False, vec![], vec![Opcode::False as u8]),
@@ -48,12 +52,47 @@ fn code_make_error() {
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
+            Opcode::Sub,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Mul,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Div,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Mod,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
             Opcode::True,
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),
         (
             Opcode::False,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::Equal,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::NotEqual,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::GreaterThan,
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),

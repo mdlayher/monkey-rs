@@ -44,24 +44,98 @@ fn compiler_ok() {
         (
             "true; false;",
             vec![
-                // 2
+                // true
                 code::Opcode::True as u8,
                 // pop
                 code::Opcode::Pop as u8,
-                // 4
+                // false
                 code::Opcode::False as u8,
                 // pop
                 code::Opcode::Pop as u8,
             ],
             vec![],
         ),
+        (
+            "2 == 4",
+            vec![
+                // 2
+                code::Opcode::Constant as u8,
+                0x00,
+                0x00,
+                // 4
+                code::Opcode::Constant as u8,
+                0x00,
+                0x01,
+                // equal
+                code::Opcode::Equal as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![object::Object::Integer(2), object::Object::Integer(4)],
+        ),
+        (
+            "2 != 4",
+            vec![
+                // 2
+                code::Opcode::Constant as u8,
+                0x00,
+                0x00,
+                // 4
+                code::Opcode::Constant as u8,
+                0x00,
+                0x01,
+                // not equal
+                code::Opcode::NotEqual as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![object::Object::Integer(2), object::Object::Integer(4)],
+        ),
+        (
+            "2 > 4",
+            vec![
+                // 2
+                code::Opcode::Constant as u8,
+                0x00,
+                0x00,
+                // 4
+                code::Opcode::Constant as u8,
+                0x00,
+                0x01,
+                // greater than
+                code::Opcode::GreaterThan as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![object::Object::Integer(2), object::Object::Integer(4)],
+        ),
+        (
+            "2 < 4",
+            // Compiler reorders the less-than to a greater-than operation.
+            vec![
+                // 4
+                code::Opcode::Constant as u8,
+                0x00,
+                0x00,
+                // 2
+                code::Opcode::Constant as u8,
+                0x00,
+                0x01,
+                // greater than
+                code::Opcode::GreaterThan as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![object::Object::Integer(4), object::Object::Integer(2)],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
         let bc = compile(input);
 
+        // Check constants first for easier debugging.
+        assert_eq!(*constants, bc.constants, "unexpected constants");
         assert_instructions(instructions, &bc.instructions);
-        assert_eq!(*constants, bc.constants);
     }
 }
 

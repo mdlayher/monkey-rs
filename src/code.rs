@@ -28,6 +28,9 @@ pub enum Opcode {
     // Boolean operations.
     True = 0x20,
     False = 0x21,
+    Equal = 0x22,
+    NotEqual = 0x23,
+    GreaterThan = 0x24,
 }
 
 impl From<u8> for Opcode {
@@ -43,6 +46,9 @@ impl From<u8> for Opcode {
             0x14 => Opcode::Mod,
             0x20 => Opcode::True,
             0x21 => Opcode::False,
+            0x22 => Opcode::Equal,
+            0x23 => Opcode::NotEqual,
+            0x24 => Opcode::GreaterThan,
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
         }
     }
@@ -182,6 +188,18 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
         },
         Opcode::False => Definition {
             name: "False",
+            operand_widths: vec![],
+        },
+        Opcode::Equal => Definition {
+            name: "Equal",
+            operand_widths: vec![],
+        },
+        Opcode::NotEqual => Definition {
+            name: "NotEqual",
+            operand_widths: vec![],
+        },
+        Opcode::GreaterThan => Definition {
+            name: "GreaterThan",
             operand_widths: vec![],
         },
     }

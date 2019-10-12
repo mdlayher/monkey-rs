@@ -26,21 +26,7 @@ impl Compiler {
                 }
             }
             ast::Node::Expression(e) => match e {
-                ast::Expression::Infix(i) => {
-                    self.compile(ast::Node::Expression(*i.left))?;
-                    self.compile(ast::Node::Expression(*i.right))?;
-
-                    let op = match i.operator {
-                        token::Token::Plus => code::Opcode::Add,
-                        token::Token::Minus => code::Opcode::Sub,
-                        token::Token::Asterisk => code::Opcode::Mul,
-                        token::Token::Slash => code::Opcode::Div,
-                        token::Token::Percent => code::Opcode::Mod,
-                        _ => panic!("unhandled operator: {:?}", i.operator),
-                    };
-
-                    self.emit(op, vec![])?;
-                }
+                ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Boolean(b) => {
                     let op = if b {
                         code::Opcode::True
@@ -73,6 +59,37 @@ impl Compiler {
             instructions: self.instructions.clone(),
             constants: self.constants.clone(),
         }
+    }
+
+    fn compile_infix_expression(&mut self, e: ast::InfixExpression) -> Result<()> {
+        // Reorder less-than expressions to greater-than by compiling RHS and
+        // then LHS to simplify bytecode.
+        if e.operator == token::Token::LessThan {
+            self.compile(ast::Node::Expression(*e.right))?;
+            self.compile(ast::Node::Expression(*e.left))?;
+
+            self.emit(code::Opcode::GreaterThan, vec![])?;
+            return Ok(());
+        }
+
+        // Evaluate all other expressions from LHS to RHS.
+        self.compile(ast::Node::Expression(*e.left))?;
+        self.compile(ast::Node::Expression(*e.right))?;
+
+        let op = match e.operator {
+            token::Token::Plus => code::Opcode::Add,
+            token::Token::Minus => code::Opcode::Sub,
+            token::Token::Asterisk => code::Opcode::Mul,
+            token::Token::Slash => code::Opcode::Div,
+            token::Token::Percent => code::Opcode::Mod,
+            token::Token::Equal => code::Opcode::Equal,
+            token::Token::NotEqual => code::Opcode::NotEqual,
+            token::Token::GreaterThan => code::Opcode::GreaterThan,
+            _ => panic!("unhandled operator: {:?}", e.operator),
+        };
+
+        self.emit(op, vec![])?;
+        Ok(())
     }
 
     fn add_constant(&mut self, obj: object::Object) -> usize {

@@ -54,7 +54,10 @@ impl<'a> Vm<'a> {
                 | code::Opcode::Sub
                 | code::Opcode::Mul
                 | code::Opcode::Div
-                | code::Opcode::Mod => {
+                | code::Opcode::Mod
+                | code::Opcode::Equal
+                | code::Opcode::NotEqual
+                | code::Opcode::GreaterThan => {
                     self.binary_op(op)?;
                 }
                 code::Opcode::Pop => {
@@ -76,25 +79,37 @@ impl<'a> Vm<'a> {
         let args = self.pop_n(2);
         match args {
             Some(args) => match (&args[0], &args[1]) {
+                // Integer operations.
                 (object::Object::Integer(r), object::Object::Integer(l)) => {
-                    // Integer operation.
                     let out = match op {
-                        code::Opcode::Add => l + r,
-                        code::Opcode::Sub => l - r,
-                        code::Opcode::Mul => l * r,
-                        code::Opcode::Div => l / r,
-                        code::Opcode::Mod => l % r,
-                        _ => panic!("unhandled binary op: {:?}", op),
+                        code::Opcode::Add => object::Object::Integer(l + r),
+                        code::Opcode::Sub => object::Object::Integer(l - r),
+                        code::Opcode::Mul => object::Object::Integer(l * r),
+                        code::Opcode::Div => object::Object::Integer(l / r),
+                        code::Opcode::Mod => object::Object::Integer(l % r),
+                        code::Opcode::Equal => object::Object::Boolean(l == r),
+                        code::Opcode::NotEqual => object::Object::Boolean(l != r),
+                        code::Opcode::GreaterThan => object::Object::Boolean(l > r),
+                        _ => panic!("unhandled integer binary op: {:?}", op),
                     };
 
-                    self.push(object::Object::Integer(out))?;
+                    self.push(out)
                 }
-                (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
-            },
-            None => return Err(Error::Internal(ErrorKind::StackEmpty)),
-        };
+                // Boolean operations.
+                (object::Object::Boolean(r), object::Object::Boolean(l)) => {
+                    let out = match op {
+                        code::Opcode::Equal => l == r,
+                        code::Opcode::NotEqual => l != r,
+                        _ => panic!("unhandled boolean binary op: {:?}", op),
+                    };
 
-        Ok(())
+                    self.push(object::Object::Boolean(out))
+                }
+                // Invalid combination.
+                (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
+            },
+            None => Err(Error::Internal(ErrorKind::StackEmpty)),
+        }
     }
 
     fn push(&mut self, obj: object::Object) -> Result<()> {
