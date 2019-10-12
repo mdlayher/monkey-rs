@@ -44,56 +44,68 @@ impl<'a> Vm<'a> {
             let op = code::Opcode::from(c.read_u8().map_err(Error::Io)?);
 
             match op {
-                code::Opcode::Constant => {
-                    let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                    self.push(bc.constants[idx as usize].clone())?;
-                }
-                // TODO(mdlayher): split opcodes by category so the compiler
-                // can enforce which ones are binary ops and etc?
-                code::Opcode::Add
-                | code::Opcode::Sub
-                | code::Opcode::Mul
-                | code::Opcode::Div
-                | code::Opcode::Mod
-                | code::Opcode::Equal
-                | code::Opcode::NotEqual
-                | code::Opcode::GreaterThan => {
-                    self.binary_op(op)?;
-                }
-                code::Opcode::Pop => {
-                    self.pop_n(1);
-                }
-                code::Opcode::True => {
-                    self.push(TRUE)?;
-                }
-                code::Opcode::False => {
-                    self.push(FALSE)?;
-                }
-                code::Opcode::Negate | code::Opcode::Not => {
-                    self.prefix_op(op)?;
-                }
+                code::Opcode::Control(ctrl) => match ctrl {
+                    code::ControlOpcode::Constant => {
+                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                        self.push(bc.constants[idx as usize].clone())?;
+                    }
+                    code::ControlOpcode::Pop => {
+                        self.pop_n(1);
+                    }
+                    code::ControlOpcode::True => {
+                        self.push(TRUE)?;
+                    }
+                    code::ControlOpcode::False => {
+                        self.push(FALSE)?;
+                    }
+                },
+                code::Opcode::Unary(u) => self.unary_op(u)?,
+                code::Opcode::Binary(b) => self.binary_op(b)?,
             };
         }
 
         Ok(())
     }
 
-    fn binary_op(&mut self, op: code::Opcode) -> Result<()> {
+    fn unary_op(&mut self, op: code::UnaryOpcode) -> Result<()> {
+        let args = self.pop_n(1);
+        match args {
+            Some(args) => {
+                let out = match (op, &args[0]) {
+                    (code::UnaryOpcode::Not, _) => match args[0] {
+                        object::Object::Boolean(b) => object::Object::Boolean(!b),
+                        // According to the compiler book, all non-boolean false
+                        // values are considered truthy and should return false.
+                        _ => FALSE,
+                    },
+                    (code::UnaryOpcode::Negate, object::Object::Integer(i)) => {
+                        object::Object::Integer(-i)
+                    }
+                    // Invalid combination.
+                    (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
+                };
+
+                self.push(out)
+            }
+            None => Err(Error::Internal(ErrorKind::StackEmpty)),
+        }
+    }
+
+    fn binary_op(&mut self, op: code::BinaryOpcode) -> Result<()> {
         let args = self.pop_n(2);
         match args {
             Some(args) => match (&args[0], &args[1]) {
                 // Integer operations.
                 (object::Object::Integer(r), object::Object::Integer(l)) => {
                     let out = match op {
-                        code::Opcode::Add => object::Object::Integer(l + r),
-                        code::Opcode::Sub => object::Object::Integer(l - r),
-                        code::Opcode::Mul => object::Object::Integer(l * r),
-                        code::Opcode::Div => object::Object::Integer(l / r),
-                        code::Opcode::Mod => object::Object::Integer(l % r),
-                        code::Opcode::Equal => object::Object::Boolean(l == r),
-                        code::Opcode::NotEqual => object::Object::Boolean(l != r),
-                        code::Opcode::GreaterThan => object::Object::Boolean(l > r),
-                        _ => panic!("unhandled integer binary op: {:?}", op),
+                        code::BinaryOpcode::Add => object::Object::Integer(l + r),
+                        code::BinaryOpcode::Sub => object::Object::Integer(l - r),
+                        code::BinaryOpcode::Mul => object::Object::Integer(l * r),
+                        code::BinaryOpcode::Div => object::Object::Integer(l / r),
+                        code::BinaryOpcode::Mod => object::Object::Integer(l % r),
+                        code::BinaryOpcode::Equal => object::Object::Boolean(l == r),
+                        code::BinaryOpcode::NotEqual => object::Object::Boolean(l != r),
+                        code::BinaryOpcode::GreaterThan => object::Object::Boolean(l > r),
                     };
 
                     self.push(out)
@@ -101,8 +113,8 @@ impl<'a> Vm<'a> {
                 // Boolean operations.
                 (object::Object::Boolean(r), object::Object::Boolean(l)) => {
                     let out = match op {
-                        code::Opcode::Equal => l == r,
-                        code::Opcode::NotEqual => l != r,
+                        code::BinaryOpcode::Equal => l == r,
+                        code::BinaryOpcode::NotEqual => l != r,
                         _ => panic!("unhandled boolean binary op: {:?}", op),
                     };
 
@@ -111,29 +123,6 @@ impl<'a> Vm<'a> {
                 // Invalid combination.
                 (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
             },
-            None => Err(Error::Internal(ErrorKind::StackEmpty)),
-        }
-    }
-
-    fn prefix_op(&mut self, op: code::Opcode) -> Result<()> {
-        let args = self.pop_n(1);
-        match args {
-            Some(args) => {
-                let out = match (op, &args[0]) {
-                    (code::Opcode::Not, _) => match args[0] {
-                        object::Object::Boolean(b) => object::Object::Boolean(!b),
-                        // According to the compiler book, all non-boolean false
-                        // values are considered truthy and should return false.
-                        _ => FALSE,
-                    },
-                    (code::Opcode::Negate, object::Object::Integer(i)) => {
-                        object::Object::Integer(-i)
-                    }
-                    _ => panic!("unhandled prefix operation: {:?} {:?}", op, args[0]),
-                };
-
-                self.push(out)
-            }
             None => Err(Error::Internal(ErrorKind::StackEmpty)),
         }
     }

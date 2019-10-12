@@ -28,35 +28,35 @@ impl Compiler {
             ast::Node::Expression(e) => match e {
                 ast::Expression::Boolean(b) => {
                     let op = if b {
-                        code::Opcode::True
+                        code::ControlOpcode::True
                     } else {
-                        code::Opcode::False
+                        code::ControlOpcode::False
                     };
 
-                    self.emit(op, vec![])?;
+                    self.emit(code::Opcode::Control(op), vec![])?;
                 }
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(object::Object::Integer(i.value))];
-                    self.emit(code::Opcode::Constant, oper)?;
+                    self.emit(code::Opcode::Control(code::ControlOpcode::Constant), oper)?;
                 }
                 ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Prefix(p) => {
                     self.compile(ast::Node::Expression(*p.right))?;
 
                     let op = match p.operator {
-                        token::Token::Minus => code::Opcode::Negate,
-                        token::Token::Bang => code::Opcode::Not,
+                        token::Token::Minus => code::UnaryOpcode::Negate,
+                        token::Token::Bang => code::UnaryOpcode::Not,
                         _ => panic!("unhandled prefix operator: {:?}", p.operator),
                     };
 
-                    self.emit(op, vec![])?;
+                    self.emit(code::Opcode::Unary(op), vec![])?;
                 }
                 _ => panic!("unhandled expression type"),
             },
             ast::Node::Statement(s) => match s {
                 ast::Statement::Expression(e) => {
                     self.compile(ast::Node::Expression(e))?;
-                    self.emit(code::Opcode::Pop, vec![])?;
+                    self.emit(code::Opcode::Control(code::ControlOpcode::Pop), vec![])?;
                 }
                 _ => panic!("unhandled statement type"),
             },
@@ -79,7 +79,10 @@ impl Compiler {
             self.compile(ast::Node::Expression(*e.right))?;
             self.compile(ast::Node::Expression(*e.left))?;
 
-            self.emit(code::Opcode::GreaterThan, vec![])?;
+            self.emit(
+                code::Opcode::Binary(code::BinaryOpcode::GreaterThan),
+                vec![],
+            )?;
             return Ok(());
         }
 
@@ -88,18 +91,18 @@ impl Compiler {
         self.compile(ast::Node::Expression(*e.right))?;
 
         let op = match e.operator {
-            token::Token::Plus => code::Opcode::Add,
-            token::Token::Minus => code::Opcode::Sub,
-            token::Token::Asterisk => code::Opcode::Mul,
-            token::Token::Slash => code::Opcode::Div,
-            token::Token::Percent => code::Opcode::Mod,
-            token::Token::Equal => code::Opcode::Equal,
-            token::Token::NotEqual => code::Opcode::NotEqual,
-            token::Token::GreaterThan => code::Opcode::GreaterThan,
+            token::Token::Plus => code::BinaryOpcode::Add,
+            token::Token::Minus => code::BinaryOpcode::Sub,
+            token::Token::Asterisk => code::BinaryOpcode::Mul,
+            token::Token::Slash => code::BinaryOpcode::Div,
+            token::Token::Percent => code::BinaryOpcode::Mod,
+            token::Token::Equal => code::BinaryOpcode::Equal,
+            token::Token::NotEqual => code::BinaryOpcode::NotEqual,
+            token::Token::GreaterThan => code::BinaryOpcode::GreaterThan,
             _ => panic!("unhandled infix operator: {:?}", e.operator),
         };
 
-        self.emit(op, vec![])?;
+        self.emit(code::Opcode::Binary(op), vec![])?;
         Ok(())
     }
 
