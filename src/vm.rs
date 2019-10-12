@@ -9,6 +9,10 @@ use crate::{code, compiler, object};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
+// Boolean object constants for use in the VM type.
+const TRUE: object::Object = object::Object::Boolean(true);
+const FALSE: object::Object = object::Object::Boolean(false);
+
 pub struct Vm<'a> {
     stack: &'a mut Vec<object::Object>,
     sp: usize,
@@ -55,6 +59,12 @@ impl<'a> Vm<'a> {
                 }
                 code::Opcode::Pop => {
                     self.pop_n(1);
+                }
+                code::Opcode::True => {
+                    self.push(TRUE)?;
+                }
+                code::Opcode::False => {
+                    self.push(FALSE)?;
                 }
             };
         }

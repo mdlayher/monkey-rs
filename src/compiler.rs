@@ -41,6 +41,15 @@ impl Compiler {
 
                     self.emit(op, vec![])?;
                 }
+                ast::Expression::Boolean(b) => {
+                    let op = if b {
+                        code::Opcode::True
+                    } else {
+                        code::Opcode::False
+                    };
+
+                    self.emit(op, vec![])?;
+                }
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(object::Object::Integer(i.value))];
                     self.emit(code::Opcode::Constant, oper)?;

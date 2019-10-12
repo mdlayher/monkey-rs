@@ -14,6 +14,8 @@ fn code_make_parse_ok() {
         ),
         (Opcode::Add, vec![], vec![Opcode::Add as u8]),
         (Opcode::Pop, vec![], vec![Opcode::Pop as u8]),
+        (Opcode::True, vec![], vec![Opcode::True as u8]),
+        (Opcode::False, vec![], vec![Opcode::False as u8]),
     ];
 
     for (op, operands, want) in &tests {
@@ -42,6 +44,16 @@ fn code_make_error() {
         ),
         (
             Opcode::Add,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::True,
+            vec![1],
+            ErrorKind::BadNumberOperands { want: 0, got: 1 },
+        ),
+        (
+            Opcode::False,
             vec![1],
             ErrorKind::BadNumberOperands { want: 0, got: 1 },
         ),

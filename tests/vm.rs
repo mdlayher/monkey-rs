@@ -13,6 +13,8 @@ fn vm_run_ok() {
         ("2 * 2", object::Object::Integer(4)),
         ("10 / 3", object::Object::Integer(3)),
         ("10 % 3", object::Object::Integer(1)),
+        ("true", object::Object::Boolean(true)),
+        ("false", object::Object::Boolean(false)),
     ];
 
     for (input, want) in &tests {

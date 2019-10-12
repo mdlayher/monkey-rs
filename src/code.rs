@@ -25,6 +25,9 @@ pub enum Opcode {
     Mul = 0x12,
     Div = 0x13,
     Mod = 0x14,
+    // Boolean operations.
+    True = 0x20,
+    False = 0x21,
 }
 
 impl From<u8> for Opcode {
@@ -38,6 +41,8 @@ impl From<u8> for Opcode {
             0x12 => Opcode::Mul,
             0x13 => Opcode::Div,
             0x14 => Opcode::Mod,
+            0x20 => Opcode::True,
+            0x21 => Opcode::False,
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
         }
     }
@@ -169,6 +174,14 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
         },
         Opcode::Mod => Definition {
             name: "Mod",
+            operand_widths: vec![],
+        },
+        Opcode::True => Definition {
+            name: "True",
+            operand_widths: vec![],
+        },
+        Opcode::False => Definition {
+            name: "False",
             operand_widths: vec![],
         },
     }

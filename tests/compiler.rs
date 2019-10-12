@@ -41,6 +41,20 @@ fn compiler_ok() {
             ],
             vec![object::Object::Integer(2), object::Object::Integer(4)],
         ),
+        (
+            "true; false;",
+            vec![
+                // 2
+                code::Opcode::True as u8,
+                // pop
+                code::Opcode::Pop as u8,
+                // 4
+                code::Opcode::False as u8,
+                // pop
+                code::Opcode::Pop as u8,
+            ],
+            vec![],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
