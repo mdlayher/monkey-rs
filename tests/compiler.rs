@@ -156,6 +156,62 @@ fn compiler_ok() {
             ],
             vec![],
         ),
+        (
+            "if (true) { 10 }; 3333;",
+            vec![
+                // true
+                ControlOpcode::True as u8,
+                // jump not true
+                ControlOpcode::JumpNotTrue as u8,
+                0x00,
+                0x07,
+                // 10
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+                // 3333
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(10), Object::Integer(3333)],
+        ),
+        (
+            "if (true) { 10 } else { 20 }; 3333;",
+            vec![
+                // true
+                ControlOpcode::True as u8,
+                // jump not true
+                ControlOpcode::JumpNotTrue as u8,
+                0x00,
+                0x0a,
+                // 10
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // jump
+                ControlOpcode::Jump as u8,
+                0x00,
+                0x0d,
+                // 20
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                ControlOpcode::Pop as u8,
+                // 3333
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(10),
+                Object::Integer(20),
+                Object::Integer(3333),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

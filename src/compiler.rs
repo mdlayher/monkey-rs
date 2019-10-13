@@ -1,7 +1,7 @@
 //! A compiler for the Monkey programming language from
 //! <https://compilerbook.com/>.
 
-use std::{error, fmt, result};
+use std::{error, fmt, mem, result};
 
 use crate::{
     ast,
@@ -10,15 +10,27 @@ use crate::{
     token::Token,
 };
 
-#[derive(Default)]
 pub struct Compiler {
     instructions: Vec<u8>,
     constants: Vec<Object>,
+    last: Option<Emitted>,
+    previous: Option<Emitted>,
+}
+
+#[derive(Debug)]
+struct Emitted {
+    op: Opcode,
+    pos: usize,
 }
 
 impl Compiler {
     pub fn new() -> Self {
-        Compiler::default()
+        Compiler {
+            instructions: vec![],
+            constants: vec![],
+            last: None,
+            previous: None,
+        }
     }
 
     pub fn compile(&mut self, node: ast::Node) -> Result<()> {
@@ -54,12 +66,18 @@ impl Compiler {
 
                     self.emit(Opcode::Unary(op), vec![])?;
                 }
+                ast::Expression::If(i) => self.compile_if_expression(i)?,
                 _ => panic!("unhandled expression type"),
             },
             ast::Node::Statement(s) => match s {
                 ast::Statement::Expression(e) => {
                     self.compile(ast::Node::Expression(e))?;
                     self.emit(Opcode::Control(ControlOpcode::Pop), vec![])?;
+                }
+                ast::Statement::Block(b) => {
+                    for s in b.statements {
+                        self.compile(ast::Node::Statement(s))?;
+                    }
                 }
                 _ => panic!("unhandled statement type"),
             },
@@ -106,6 +124,44 @@ impl Compiler {
         Ok(())
     }
 
+    fn compile_if_expression(&mut self, e: ast::IfExpression) -> Result<()> {
+        self.compile(ast::Node::Expression(*e.condition))?;
+
+        // Emit a jump with a placeholder operand, but track its
+        // position so we can replace the operand at a later time
+        // once we've emitted more instructions.
+        let jump_not_true_pos =
+            self.emit(Opcode::Control(ControlOpcode::JumpNotTrue), vec![9999])?;
+
+        self.compile(ast::Node::Statement(ast::Statement::Block(e.consequence)))?;
+
+        // Remove a duplicate pop that occurs in the middle of
+        // the conditional.
+        self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
+
+        if let Some(a) = e.alternative {
+            // We have an alternative, set up a jump over it that
+            // the consequence above will hit and skip this block.
+            let jump_pos = self.emit(Opcode::Control(ControlOpcode::Jump), vec![9999])?;
+
+            // Rewrite the jump with the correct instruction pointer.
+            self.change_operand(jump_not_true_pos, self.instructions.len())?;
+
+            self.compile(ast::Node::Statement(ast::Statement::Block(a)))?;
+
+            // Remove a duplicate pop that occurs in the middle of
+            // the conditional.
+            self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
+
+            self.change_operand(jump_pos, self.instructions.len())?;
+        } else {
+            // Rewrite the jump with the correct instruction pointer.
+            self.change_operand(jump_not_true_pos, self.instructions.len())?;
+        }
+
+        Ok(())
+    }
+
     fn add_constant(&mut self, obj: Object) -> usize {
         self.constants.push(obj);
         self.constants.len() - 1
@@ -113,13 +169,60 @@ impl Compiler {
 
     fn emit(&mut self, op: Opcode, operands: Vec<usize>) -> Result<usize> {
         let ins = code::make(op, &operands).map_err(Error::Code)?;
-        Ok(self.add_instruction(&ins))
+
+        // Track the last emitted instruction and its position for later
+        // modification if necessary.
+        let pos = self.add_instruction(&ins);
+        self.set_last(op, pos);
+
+        Ok(pos)
     }
 
     fn add_instruction(&mut self, ins: &[u8]) -> usize {
         let pos = self.instructions.len();
         self.instructions.extend(ins);
         pos
+    }
+
+    fn set_last(&mut self, op: Opcode, pos: usize) {
+        let last = Some(Emitted { op, pos });
+
+        // Store value of last into previous and then overwrite last.
+        mem::swap(&mut self.last, &mut self.previous);
+        self.last = last;
+    }
+
+    fn try_remove_last(&mut self, op: Opcode) -> bool {
+        match &self.last {
+            None => return false,
+            Some(l) => {
+                if l.op != op {
+                    return false;
+                }
+            }
+        }
+
+        // Trim the last instruction from the instructions stream.
+        let end = (&self.last).as_ref().expect("last must not be none").pos;
+        self.instructions = self.instructions.drain(..end).collect();
+
+        // Store value of previous into last.
+        mem::swap(&mut self.last, &mut self.previous);
+        true
+    }
+
+    fn change_operand(&mut self, op_pos: usize, operand: usize) -> Result<()> {
+        let op = Opcode::from(self.instructions[op_pos]);
+        let ins = code::make(op, &[operand]).map_err(Error::Code)?;
+
+        self.replace_instruction(op_pos, &ins);
+        Ok(())
+    }
+
+    fn replace_instruction(&mut self, pos: usize, ins: &[u8]) {
+        for (i, b) in ins.iter().enumerate() {
+            self.instructions[pos + i] = *b
+        }
     }
 }
 

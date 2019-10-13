@@ -58,6 +58,7 @@ impl<'a> Vm<'a> {
                     ControlOpcode::False => {
                         self.push(object::FALSE);
                     }
+                    _ => unimplemented!(),
                 },
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,

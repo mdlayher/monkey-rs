@@ -24,6 +24,8 @@ pub enum ControlOpcode {
     Pop = 0x01,
     True = 0x02,
     False = 0x03,
+    JumpNotTrue = 0x04,
+    Jump = 0x05,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -64,6 +66,8 @@ impl From<u8> for ControlOpcode {
             0x01 => ControlOpcode::Pop,
             0x02 => ControlOpcode::True,
             0x03 => ControlOpcode::False,
+            0x04 => ControlOpcode::JumpNotTrue,
+            0x05 => ControlOpcode::Jump,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -219,6 +223,14 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             ControlOpcode::False => Definition {
                 name: "False",
                 operand_widths: vec![],
+            },
+            ControlOpcode::JumpNotTrue => Definition {
+                name: "JumpNotTrue",
+                operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::Jump => Definition {
+                name: "Jump",
+                operand_widths: vec![Width::Two],
             },
         },
         Opcode::Unary(u) => match u {
