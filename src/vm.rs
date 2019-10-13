@@ -68,63 +68,61 @@ impl<'a> Vm<'a> {
     }
 
     fn unary_op(&mut self, op: UnaryOpcode) -> Result<()> {
-        let args = self.pop_n(1);
-        match args {
-            Some(args) => {
-                let out = match (op, &args[0]) {
-                    (UnaryOpcode::Not, _) => match args[0] {
-                        Object::Boolean(b) => Object::Boolean(!b),
-                        // According to the compiler book, all non-boolean false
-                        // values are considered truthy and should return false.
-                        _ => object::FALSE,
-                    },
-                    (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
-                    // Invalid combination.
-                    (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
+        let args = self
+            .pop_n(1)
+            .expect("stack did not have enough elements for unary operation");
+
+        let out = match (op, &args[0]) {
+            (UnaryOpcode::Not, _) => match args[0] {
+                Object::Boolean(b) => Object::Boolean(!b),
+                // According to the compiler book, all non-boolean false
+                // values are considered truthy and should return false.
+                _ => object::FALSE,
+            },
+            (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
+            // Invalid combination.
+            (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
+        };
+
+        self.push(out);
+        Ok(())
+    }
+
+    fn binary_op(&mut self, op: BinaryOpcode) -> Result<()> {
+        let args = self
+            .pop_n(2)
+            .expect("stack did not have enough elements for binary operation");
+
+        match (&args[0], &args[1]) {
+            // Integer operations.
+            (Object::Integer(r), Object::Integer(l)) => {
+                let out = match op {
+                    BinaryOpcode::Add => Object::Integer(l + r),
+                    BinaryOpcode::Sub => Object::Integer(l - r),
+                    BinaryOpcode::Mul => Object::Integer(l * r),
+                    BinaryOpcode::Div => Object::Integer(l / r),
+                    BinaryOpcode::Mod => Object::Integer(l % r),
+                    BinaryOpcode::Equal => Object::Boolean(l == r),
+                    BinaryOpcode::NotEqual => Object::Boolean(l != r),
+                    BinaryOpcode::GreaterThan => Object::Boolean(l > r),
                 };
 
                 self.push(out);
                 Ok(())
             }
-            None => Err(Error::Internal(ErrorKind::StackEmpty)),
-        }
-    }
+            // Boolean operations.
+            (Object::Boolean(r), Object::Boolean(l)) => {
+                let out = match op {
+                    BinaryOpcode::Equal => l == r,
+                    BinaryOpcode::NotEqual => l != r,
+                    _ => panic!("unhandled boolean binary op: {:?}", op),
+                };
 
-    fn binary_op(&mut self, op: BinaryOpcode) -> Result<()> {
-        let args = self.pop_n(2);
-        match args {
-            Some(args) => match (&args[0], &args[1]) {
-                // Integer operations.
-                (Object::Integer(r), Object::Integer(l)) => {
-                    let out = match op {
-                        BinaryOpcode::Add => Object::Integer(l + r),
-                        BinaryOpcode::Sub => Object::Integer(l - r),
-                        BinaryOpcode::Mul => Object::Integer(l * r),
-                        BinaryOpcode::Div => Object::Integer(l / r),
-                        BinaryOpcode::Mod => Object::Integer(l % r),
-                        BinaryOpcode::Equal => Object::Boolean(l == r),
-                        BinaryOpcode::NotEqual => Object::Boolean(l != r),
-                        BinaryOpcode::GreaterThan => Object::Boolean(l > r),
-                    };
-
-                    self.push(out);
-                    Ok(())
-                }
-                // Boolean operations.
-                (Object::Boolean(r), Object::Boolean(l)) => {
-                    let out = match op {
-                        BinaryOpcode::Equal => l == r,
-                        BinaryOpcode::NotEqual => l != r,
-                        _ => panic!("unhandled boolean binary op: {:?}", op),
-                    };
-
-                    self.push(Object::Boolean(out));
-                    Ok(())
-                }
-                // Invalid combination.
-                (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
-            },
-            None => Err(Error::Internal(ErrorKind::StackEmpty)),
+                self.push(Object::Boolean(out));
+                Ok(())
+            }
+            // Invalid combination.
+            (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
         }
     }
 
@@ -198,14 +196,12 @@ impl error::Error for Error {
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
     BadArguments, // TODO(mdlayher): more debug information.
-    StackEmpty,
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             ErrorKind::BadArguments => write!(f, "bad arguments for operation"),
-            ErrorKind::StackEmpty => write!(f, "stack empty while performing operation"),
         }
     }
 }
