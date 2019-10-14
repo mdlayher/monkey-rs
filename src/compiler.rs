@@ -46,10 +46,15 @@ impl Compiler {
 
                     self.emit(Opcode::Control(op), vec![])?;
                 }
+                ast::Expression::Float(f) => {
+                    let oper = vec![self.add_constant(Object::Float(f.to_f64()))];
+                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                }
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(Object::Integer(i.value))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
+
                 ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Prefix(p) => {
                     self.compile(ast::Node::Expression(*p.right))?;

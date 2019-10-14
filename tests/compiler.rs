@@ -39,6 +39,23 @@ fn compiler_ok() {
             vec![Object::Integer(2), Object::Integer(4)],
         ),
         (
+            "1 * 1.0",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // 1.0
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // *, pop
+                BinaryOpcode::Mul as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(1), Object::Float(1.0)],
+        ),
+        (
             "true; false;",
             vec![
                 // true

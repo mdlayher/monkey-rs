@@ -122,9 +122,33 @@ impl<'a> Vm<'a> {
                 self.push(Object::Boolean(out));
                 Ok(())
             }
+            // Float and Float/Integer operations. Integers are automatically
+            // coerced into floats for operations, and all of these operations
+            // will produce a float result.
+            (Object::Float(r), Object::Float(l)) => self.binary_float_op(op, *r, *l),
+            (Object::Integer(r), Object::Float(l)) => self.binary_float_op(op, *r as f64, *l),
+            (Object::Float(r), Object::Integer(l)) => self.binary_float_op(op, *r, *l as f64),
             // Invalid combination.
             (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
         }
+    }
+
+    fn binary_float_op(&mut self, op: BinaryOpcode, r: f64, l: f64) -> Result<()> {
+        let out = match op {
+            BinaryOpcode::Add => Object::Float(l + r),
+            BinaryOpcode::Sub => Object::Float(l - r),
+            BinaryOpcode::Mul => Object::Float(l * r),
+            BinaryOpcode::Div => Object::Float(l / r),
+            BinaryOpcode::Mod => Object::Float(l % r),
+            BinaryOpcode::GreaterThan => Object::Boolean(l > r),
+            BinaryOpcode::Equal | BinaryOpcode::NotEqual => {
+                // == and != are not supported with float arguments.
+                return Err(Error::Internal(ErrorKind::BadArguments));
+            }
+        };
+
+        self.push(out);
+        Ok(())
     }
 
     fn push(&mut self, obj: Object) {
