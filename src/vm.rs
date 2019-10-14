@@ -13,28 +13,34 @@ use crate::{
 
 use byteorder::{BigEndian, ReadBytesExt};
 
+/// A virtual machine that can execute monkey bytecode.
 pub struct Vm<'a> {
     stack: &'a mut Vec<Object>,
     sp: usize,
 }
 
+/// Creates a stack of a suitable size for use with `Vm::new`.
 pub fn new_stack() -> Vec<Object> {
     vec![Object::Null; 64]
 }
 
 impl<'a> Vm<'a> {
+    /// Creates a new `Vm` that uses the input stack.
     pub fn new(stack: &'a mut Vec<Object>) -> Self {
         Vm { stack, sp: 0 }
     }
 
+    /// Returns the last `Object` popped off the stack after calling `run`.
     pub fn last_popped(&self) -> &Object {
         &self.stack[self.sp]
     }
 
+    /// Creates a copy of the in-use portion of the stack.
     pub fn dump_stack(&self) -> Vec<Object> {
         self.stack.iter().take(self.sp).cloned().collect()
     }
 
+    /// Runs the virtual machine with the input `compiler::Bytecode`.
     pub fn run(&mut self, bc: &compiler::Bytecode) -> Result<()> {
         let len = bc.instructions.len() as u64;
         let mut c = io::Cursor::new(&bc.instructions);
@@ -67,6 +73,7 @@ impl<'a> Vm<'a> {
         Ok(())
     }
 
+    /// Executes a unary operation against one object.
     fn unary_op(&mut self, op: UnaryOpcode) -> Result<()> {
         let (start, end) = self.pop_n(1);
         let args = &self.stack[start..end];
@@ -93,6 +100,7 @@ impl<'a> Vm<'a> {
         Ok(())
     }
 
+    /// Executes a binary operation against two objects.
     fn binary_op(&mut self, op: BinaryOpcode) -> Result<()> {
         let (start, end) = self.pop_n(2);
         let args = &self.stack[start..end];
@@ -159,6 +167,7 @@ impl<'a> Vm<'a> {
         }
     }
 
+    /// Executes a binary float operation.
     // Does not take &mut self and push directly to stack to simplify borrowing.
     fn binary_float_op(&self, op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result<Object> {
         let out = match op {
@@ -181,6 +190,7 @@ impl<'a> Vm<'a> {
         Ok(out)
     }
 
+    /// Pushes an `Object` onto the stack, growing the stack if needed.
     fn push(&mut self, obj: Object) {
         if self.sp >= self.stack.len() {
             // Grow the stack to push this element.
@@ -193,6 +203,8 @@ impl<'a> Vm<'a> {
         self.sp += 1;
     }
 
+    /// Provides start and end indices for a slice of the stack that holds
+    /// `n` elements.
     fn pop_n(&mut self, n: usize) -> (usize, usize) {
         if self.sp == 0 {
             // Nothing on the stack.
@@ -226,6 +238,8 @@ pub enum Error {
 }
 
 impl Error {
+    /// Produces an `Error::Runtime(ErrorKind::BadArguments)` error with the
+    /// input parameters.
     fn bad_arguments(kind: BadArgumentKind, op: Opcode, args: &[Object]) -> Self {
         // Sanity checks to ensure kind and number of arguments always match up.
         let n = match kind {
@@ -268,6 +282,7 @@ impl error::Error for Error {
     }
 }
 
+/// Describes runtime errors which may occur during `Vm::run`.
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
     BadArguments {
@@ -277,6 +292,7 @@ pub enum ErrorKind {
     },
 }
 
+/// Describes a particular type of bad arguments error.
 #[derive(Debug, PartialEq)]
 pub enum BadArgumentKind {
     UnaryOperatorUnsupported,
