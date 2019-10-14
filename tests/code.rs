@@ -85,8 +85,10 @@ fn code_make_parse_ok() {
 
         // We only produce one instruction so only check the first in the stream.
         let ins = Instructions::parse(&bc).expect("parse returned an error");
-        assert_eq!(*op, ins.stream[0].0);
-        assert_eq!(*operands, ins.stream[0].1);
+
+        // First tuple element is index; don't compare it.
+        assert_eq!(*op, ins.stream[0].1);
+        assert_eq!(*operands, ins.stream[0].2);
     }
 }
 

@@ -53,48 +53,60 @@ impl<'a> Vm<'a> {
             let op = Opcode::from(c.read_u8().map_err(Error::Io)?);
 
             match op {
-                Opcode::Control(ctrl) => match ctrl {
-                    ControlOpcode::Constant => {
-                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                        self.push(bc.constants[idx as usize].clone());
-                    }
-                    ControlOpcode::Pop => {
-                        self.pop_n(1);
-                    }
-                    ControlOpcode::True => {
-                        self.push(object::TRUE);
-                    }
-                    ControlOpcode::False => {
-                        self.push(object::FALSE);
-                    }
-                    ControlOpcode::Jump => {
-                        // Immediately jump to the specified index.
-                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                        c.seek(io::SeekFrom::Start(u64::from(idx)))
-                            .map_err(Error::Io)?;
-                    }
-                    ControlOpcode::JumpNotTrue => {
-                        // Conditionally jump to the specified index if the
-                        // top value on the stack is not truthy.
-                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-
-                        let (start, end) = self.pop_n(1);
-                        let args = &self.stack[start..end];
-
-                        let truthy = match args[0] {
-                            Object::Boolean(b) => b,
-                            _ => true,
-                        };
-                        if !truthy {
-                            c.seek(io::SeekFrom::Start(u64::from(idx)))
-                                .map_err(Error::Io)?;
-                        }
-                    }
-                },
+                Opcode::Control(ctrl) => self.control_op(&mut c, ctrl, &bc.constants)?,
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,
             };
         }
+
+        Ok(())
+    }
+
+    /// Executes a control operation.
+    fn control_op(
+        &mut self,
+        c: &mut io::Cursor<&Vec<u8>>,
+        op: ControlOpcode,
+        consts: &[Object],
+    ) -> Result<()> {
+        match op {
+            ControlOpcode::Constant => {
+                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                self.push(consts[idx as usize].clone());
+            }
+            ControlOpcode::Pop => {
+                self.pop_n(1);
+            }
+            ControlOpcode::True => {
+                self.push(object::TRUE);
+            }
+            ControlOpcode::False => {
+                self.push(object::FALSE);
+            }
+            ControlOpcode::Jump => {
+                // Immediately jump to the specified index.
+                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                c.seek(io::SeekFrom::Start(u64::from(idx)))
+                    .map_err(Error::Io)?;
+            }
+            ControlOpcode::JumpNotTrue => {
+                // Conditionally jump to the specified index if the
+                // top value on the stack is not truthy.
+                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+
+                let (start, end) = self.pop_n(1);
+                let args = &self.stack[start..end];
+
+                let truthy = match args[0] {
+                    Object::Boolean(b) => b,
+                    _ => true,
+                };
+                if !truthy {
+                    c.seek(io::SeekFrom::Start(u64::from(idx)))
+                        .map_err(Error::Io)?;
+                }
+            }
+        };
 
         Ok(())
     }
