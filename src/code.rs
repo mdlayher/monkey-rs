@@ -158,7 +158,7 @@ pub fn make(op: Opcode, operands: &[usize]) -> Result<Vec<u8>> {
     // Ensure the correct number of operands were passed for this opcode.
     if operands.len() != def.operand_widths.len() {
         return Err(Error::Internal {
-            op: def.name.to_string(),
+            op,
             kind: ErrorKind::BadNumberOperands {
                 want: def.operand_widths.len(),
                 got: operands.len(),
@@ -333,14 +333,14 @@ pub type Result<T> = result::Result<T, Error>;
 /// Specifies the different classes of errors which may occur.
 #[derive(Debug)]
 pub enum Error {
-    Internal { op: String, kind: ErrorKind },
+    Internal { op: Opcode, kind: ErrorKind },
     Io(io::Error),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Internal { op, kind } => write!(f, "internal error: opcode {}: {}", op, kind),
+            Error::Internal { op, kind } => write!(f, "internal error: opcode {:?}: {}", op, kind),
             Error::Io(err) => err.fmt(f),
         }
     }

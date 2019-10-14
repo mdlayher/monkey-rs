@@ -165,16 +165,15 @@ fn code_make_error() {
         ),
     ];
 
-    for (op, operands, want) in &tests {
-        let got = match make(*op, operands) {
-            Ok(_) => panic!("make did not return an error"),
-            Err(err) => match err {
-                Error::Internal { kind, .. } => kind,
-                _ => panic!("unhandled error: {:?}", err),
-            },
-        };
+    for (want_op, operands, want_kind) in &tests {
+        let err = make(*want_op, operands).expect_err("make did not return an error");
 
-        assert_eq!(*want, got);
+        if let Error::Internal { op, kind } = err {
+            assert_eq!(*want_op, op);
+            assert_eq!(*want_kind, kind);
+        } else {
+            panic!("not an internal error: {:?}", err);
+        }
     }
 }
 
@@ -183,14 +182,12 @@ fn code_instructions_parse_io_unexpected_eof_error() {
     let tests = vec![vec![0x00, 0xff], vec![0x00, 0x00, 0x00, 0x00]];
 
     for tt in &tests {
-        let kind = match Instructions::parse(tt) {
-            Ok(_) => panic!("parse did not return an error"),
-            Err(err) => match err {
-                Error::Io(err) => err.kind(),
-                _ => panic!("unhandled error: {:?}", err),
-            },
-        };
+        let err = Instructions::parse(tt).expect_err("parse did not return an error");
 
-        assert_eq!(io::ErrorKind::UnexpectedEof, kind);
+        if let Error::Io(err) = err {
+            assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
+        } else {
+            panic!("not an I/O error {:?}", err);
+        };
     }
 }
