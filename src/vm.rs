@@ -19,7 +19,6 @@ pub struct Vm<'a> {
 }
 
 pub fn new_stack() -> Vec<Object> {
-    // TODO(mdlayher): growable stacks.
     vec![Object::Null; 64]
 }
 
@@ -82,7 +81,13 @@ impl<'a> Vm<'a> {
             },
             (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
             // Invalid combination.
-            (_, _) => return Err(Error::Internal(ErrorKind::BadArguments)),
+            (_, _) => {
+                return Err(Error::bad_arguments(
+                    BadArgumentKind::UnaryOperatorUnsupported,
+                    Opcode::Unary(op),
+                    &args,
+                ));
+            }
         };
 
         self.push(out);
@@ -116,7 +121,14 @@ impl<'a> Vm<'a> {
                 let out = match op {
                     BinaryOpcode::Equal => l == r,
                     BinaryOpcode::NotEqual => l != r,
-                    _ => panic!("unhandled boolean binary op: {:?}", op),
+                    _ => {
+                        // No other binary operators are supported on booleans.
+                        return Err(Error::bad_arguments(
+                            BadArgumentKind::BinaryOperatorUnsupported,
+                            Opcode::Binary(op),
+                            &args,
+                        ));
+                    }
                 };
 
                 self.push(Object::Boolean(out));
@@ -125,15 +137,23 @@ impl<'a> Vm<'a> {
             // Float and Float/Integer operations. Integers are automatically
             // coerced into floats for operations, and all of these operations
             // will produce a float result.
-            (Object::Float(r), Object::Float(l)) => self.binary_float_op(op, *r, *l),
-            (Object::Integer(r), Object::Float(l)) => self.binary_float_op(op, *r as f64, *l),
-            (Object::Float(r), Object::Integer(l)) => self.binary_float_op(op, *r, *l as f64),
+            (Object::Float(r), Object::Float(l)) => self.binary_float_op(op, &args, *r, *l),
+            (Object::Integer(r), Object::Float(l)) => {
+                self.binary_float_op(op, &args, *r as f64, *l)
+            }
+            (Object::Float(r), Object::Integer(l)) => {
+                self.binary_float_op(op, &args, *r, *l as f64)
+            }
             // Invalid combination.
-            (_, _) => Err(Error::Internal(ErrorKind::BadArguments)),
+            (_, _) => Err(Error::bad_arguments(
+                BadArgumentKind::BinaryOperatorUnsupported,
+                Opcode::Binary(op),
+                &args,
+            )),
         }
     }
 
-    fn binary_float_op(&mut self, op: BinaryOpcode, r: f64, l: f64) -> Result<()> {
+    fn binary_float_op(&mut self, op: BinaryOpcode, args: &[Object], r: f64, l: f64) -> Result<()> {
         let out = match op {
             BinaryOpcode::Add => Object::Float(l + r),
             BinaryOpcode::Sub => Object::Float(l - r),
@@ -143,7 +163,11 @@ impl<'a> Vm<'a> {
             BinaryOpcode::GreaterThan => Object::Boolean(l > r),
             BinaryOpcode::Equal | BinaryOpcode::NotEqual => {
                 // == and != are not supported with float arguments.
-                return Err(Error::Internal(ErrorKind::BadArguments));
+                return Err(Error::bad_arguments(
+                    BadArgumentKind::BinaryOperatorUnsupported,
+                    Opcode::Binary(op),
+                    args,
+                ));
             }
         };
 
@@ -184,7 +208,11 @@ impl<'a> Vm<'a> {
         }
 
         // Must always return the requested number of elements.
-        assert!(out.len() == n);
+        assert_eq!(
+            out.len(),
+            n,
+            "pop_n did not return the correct number of elements"
+        );
 
         Some(out)
     }
@@ -196,14 +224,38 @@ pub type Result<T> = result::Result<T, Error>;
 /// Specifies the different classes of errors which may occur.
 #[derive(Debug)]
 pub enum Error {
-    Internal(ErrorKind),
+    Runtime(ErrorKind),
     Io(io::Error),
+}
+
+impl Error {
+    fn bad_arguments(kind: BadArgumentKind, op: Opcode, args: &[Object]) -> Self {
+        // Sanity checks to ensure kind and number of arguments always match up.
+        let n = match kind {
+            BadArgumentKind::UnaryOperatorUnsupported => 1,
+            BadArgumentKind::BinaryOperatorUnsupported => 2,
+        };
+
+        assert_eq!(
+            args.len(),
+            n,
+            "unexpected number of arguments for {:?} error",
+            kind
+        );
+
+        // Copy the arguments to avoid borrowing hassles for generating errors and
+        // swap the argument order from stack order to input order.
+        let mut args = args.to_vec();
+        args.reverse();
+
+        Self::Runtime(ErrorKind::BadArguments { kind, op, args })
+    }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::Internal(kind) => write!(f, "internal VM error: {}", kind),
+            Error::Runtime(kind) => write!(f, "runtime error: {}", kind),
             Error::Io(err) => err.fmt(f),
         }
     }
@@ -220,13 +272,34 @@ impl error::Error for Error {
 
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
-    BadArguments, // TODO(mdlayher): more debug information.
+    BadArguments {
+        kind: BadArgumentKind,
+        op: Opcode,
+        args: Vec<Object>,
+    },
+}
+
+#[derive(Debug, PartialEq)]
+pub enum BadArgumentKind {
+    UnaryOperatorUnsupported,
+    BinaryOperatorUnsupported,
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ErrorKind::BadArguments => write!(f, "bad arguments for operation"),
+            ErrorKind::BadArguments { kind, op, args } => match kind {
+                BadArgumentKind::UnaryOperatorUnsupported => write!(
+                    f,
+                    "unary operator {} not supported on argument: \"{}{}\"",
+                    op, op, args[0],
+                ),
+                BadArgumentKind::BinaryOperatorUnsupported => write!(
+                    f,
+                    "binary operator {} not supported on arguments: \"{} {} {}\"",
+                    op, args[0], op, args[1],
+                ),
+            },
         }
     }
 }

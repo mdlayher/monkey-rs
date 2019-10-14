@@ -46,6 +46,16 @@ pub enum BinaryOpcode {
     GreaterThan = 0x27,
 }
 
+impl fmt::Display for Opcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Control(c) => c.fmt(f),
+            Self::Unary(u) => u.fmt(f),
+            Self::Binary(b) => b.fmt(f),
+        }
+    }
+}
+
 impl From<u8> for Opcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
@@ -54,6 +64,19 @@ impl From<u8> for Opcode {
             0x10..=0x1f => Self::Unary(UnaryOpcode::from(v)),
             0x20..=0x2f => Self::Binary(BinaryOpcode::from(v)),
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
+        }
+    }
+}
+
+impl fmt::Display for ControlOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Constant => write!(f, "CONST"),
+            Self::Pop => write!(f, "POP"),
+            Self::True => write!(f, "TRUE"),
+            Self::False => write!(f, "FALSE"),
+            Self::JumpNotTrue => write!(f, "JUMP NOT TRUE"),
+            Self::Jump => write!(f, "JUMP"),
         }
     }
 }
@@ -73,6 +96,15 @@ impl From<u8> for ControlOpcode {
     }
 }
 
+impl fmt::Display for UnaryOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Negate => write!(f, "-"),
+            Self::Not => write!(f, "!"),
+        }
+    }
+}
+
 impl From<u8> for UnaryOpcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
@@ -80,6 +112,21 @@ impl From<u8> for UnaryOpcode {
             0x10 => UnaryOpcode::Negate,
             0x11 => UnaryOpcode::Not,
             _ => panic!("unhandled u8 to UnaryOpcode conversion: {}", v),
+        }
+    }
+}
+
+impl fmt::Display for BinaryOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Add => write!(f, "+"),
+            Self::Sub => write!(f, "-"),
+            Self::Mul => write!(f, "*"),
+            Self::Div => write!(f, "/"),
+            Self::Mod => write!(f, "%"),
+            Self::Equal => write!(f, "=="),
+            Self::NotEqual => write!(f, "!="),
+            Self::GreaterThan => write!(f, ">"),
         }
     }
 }

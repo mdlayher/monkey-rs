@@ -2,7 +2,9 @@ extern crate mdl_monkey;
 
 use mdl_monkey::vm::*;
 use mdl_monkey::{
-    ast, compiler, lexer,
+    ast,
+    code::{BinaryOpcode, Opcode, UnaryOpcode},
+    compiler, lexer,
     object::{self, Object},
     parser,
 };
@@ -52,6 +54,74 @@ fn vm_run_ok() {
             "incorrect value removed from stack, debug:\n{:?}",
             vm.dump_stack(),
         );
+    }
+}
+
+#[test]
+fn vm_runtime_errors() {
+    let tests = vec![
+        (
+            "-true",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::UnaryOperatorUnsupported,
+                op: Opcode::Unary(UnaryOpcode::Negate),
+                args: vec![object::TRUE],
+            },
+        ),
+        (
+            "true + false",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Add),
+                args: vec![object::TRUE, object::FALSE],
+            },
+        ),
+        (
+            "false - false",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Sub),
+                args: vec![object::FALSE, object::FALSE],
+            },
+        ),
+        (
+            "true + 1",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Add),
+                args: vec![object::TRUE, Object::Integer(1)],
+            },
+        ),
+        (
+            "1.1 == 1.1",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Equal),
+                args: vec![Object::Float(1.1), Object::Float(1.1)],
+            },
+        ),
+        (
+            "1.1 != 1.1",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::NotEqual),
+                args: vec![Object::Float(1.1), Object::Float(1.1)],
+            },
+        ),
+    ];
+
+    for (input, want) in &tests {
+        let mut stack = new_stack();
+        let mut vm = Vm::new(&mut stack);
+        let err = vm
+            .run(&compile(input))
+            .expect_err("run did not return an error");
+
+        if let Error::Runtime(got) = err {
+            assert_eq!(*want, got);
+        } else {
+            panic!("not a runtime error: {:?}", err);
+        }
     }
 }
 
