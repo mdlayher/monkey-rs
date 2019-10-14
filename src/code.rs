@@ -197,7 +197,8 @@ pub fn make(op: Opcode, operands: &[usize]) -> Result<Vec<u8>> {
 /// A stream of bytecode instructions.
 #[derive(Debug, PartialEq)]
 pub struct Instructions {
-    pub stream: Vec<(Opcode, Vec<usize>)>,
+    // A stream of instructions with their byte index, opcode, and operands.
+    pub stream: Vec<(usize, Opcode, Vec<usize>)>,
 }
 
 impl Instructions {
@@ -207,12 +208,18 @@ impl Instructions {
         let mut ins = Instructions { stream: vec![] };
 
         // Keep reading until we hit the end of the stream.
+        let mut idx = 0;
         while c.position() < buf.len() as u64 {
+            // Track the position of each operation in the stream.
+            let op_idx = idx;
             let op = Opcode::from(c.read_u8().map_err(Error::Io)?);
+            idx += 1;
+
             let def = lookup(op);
 
             let mut operands = Vec::with_capacity(def.operand_widths.len());
             for w in def.operand_widths {
+                idx += w as usize;
                 match w {
                     Width::Two => {
                         operands.push(c.read_u16::<BigEndian>().map_err(Error::Io)? as usize)
@@ -220,7 +227,7 @@ impl Instructions {
                 }
             }
 
-            ins.stream.push((op, operands));
+            ins.stream.push((op_idx, op, operands));
         }
 
         Ok(ins)
@@ -229,9 +236,8 @@ impl Instructions {
 
 impl fmt::Display for Instructions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (i, (op, operands)) in self.stream.iter().enumerate() {
-            // TODO(mdlayher): add proper offsets and formatting.
-            writeln!(f, "{:04} {:?} {:?}", i, op, operands)?;
+        for (idx, op, operands) in &self.stream {
+            writeln!(f, "{:04} {:?} {:?}", idx, op, operands)?;
         }
         Ok(())
     }

@@ -2,6 +2,7 @@ extern crate getopts;
 extern crate mdl_monkey;
 
 use mdl_monkey::ast;
+use mdl_monkey::code;
 use mdl_monkey::compiler::Compiler;
 use mdl_monkey::evaluator;
 use mdl_monkey::lexer::Lexer;
@@ -18,6 +19,11 @@ fn main() -> Result<(), String> {
     let program = args[0].clone();
 
     let mut opts = Options::new();
+    opts.optflag(
+        "b",
+        "bytecode",
+        "display bytecode to be executed by the compiler/VM backend",
+    );
     opts.optflag(
         "e",
         "eval",
@@ -47,7 +53,7 @@ fn main() -> Result<(), String> {
     if matches.opt_present("e") {
         eval(ast::Node::Program(prog))?;
     } else {
-        run_vm(ast::Node::Program(prog))?;
+        run_vm(ast::Node::Program(prog), matches.opt_present("b"))?;
     }
 
     Ok(())
@@ -104,15 +110,27 @@ fn eval(node: ast::Node) -> Result<(), String> {
     Ok(())
 }
 
-fn run_vm(node: ast::Node) -> Result<(), String> {
-    println!("compiler/VM:");
-
+fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
     let mut c = Compiler::new();
     c.compile(node).map_err(|err| err.to_string())?;
+    let bc = c.bytecode();
+
+    if print_bytecode {
+        let ins = code::Instructions::parse(&bc.instructions).map_err(|err| err.to_string())?;
+
+        println!("constants:");
+        for (i, con) in bc.constants.iter().enumerate() {
+            println!("{:02}: {}", i, con);
+        }
+
+        println!("\nbytecode:\n\n{}", ins);
+    }
 
     let mut stack = vm::new_stack();
     let mut vm = Vm::new(&mut stack);
-    vm.run(&c.bytecode()).map_err(|err| err.to_string())?;
+    vm.run(&bc).map_err(|err| err.to_string())?;
+
+    println!("compiler/VM:");
 
     // TODO(mdlayher): more output.
     println!("  - {:?}", vm.last_popped());

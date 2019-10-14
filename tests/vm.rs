@@ -41,6 +41,11 @@ fn vm_run_ok() {
         ("!!true", object::TRUE),
         ("!5", object::FALSE),
         ("!!5", object::TRUE),
+        ("if (true) { 10 }", Object::Integer(10)),
+        ("if (true) { 10 } else { 20 }", Object::Integer(10)),
+        ("if (false) { 10 } else { 20 }", Object::Integer(20)),
+        ("if (1) { 10 }", Object::Integer(10)),
+        ("if (1 < 2) { 10 }", Object::Integer(10)),
     ];
 
     for (input, want) in &tests {

@@ -3,7 +3,11 @@
 
 extern crate byteorder;
 
-use std::{error, fmt, io, result};
+use std::{
+    error, fmt,
+    io::{self, Seek},
+    result,
+};
 
 use crate::{
     code::{BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
@@ -63,7 +67,29 @@ impl<'a> Vm<'a> {
                     ControlOpcode::False => {
                         self.push(object::FALSE);
                     }
-                    _ => unimplemented!(),
+                    ControlOpcode::Jump => {
+                        // Immediately jump to the specified index.
+                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                        c.seek(io::SeekFrom::Start(u64::from(idx)))
+                            .map_err(Error::Io)?;
+                    }
+                    ControlOpcode::JumpNotTrue => {
+                        // Conditionally jump to the specified index if the
+                        // top value on the stack is not truthy.
+                        let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+
+                        let (start, end) = self.pop_n(1);
+                        let args = &self.stack[start..end];
+
+                        let truthy = match args[0] {
+                            Object::Boolean(b) => b,
+                            _ => true,
+                        };
+                        if !truthy {
+                            c.seek(io::SeekFrom::Start(u64::from(idx)))
+                                .map_err(Error::Io)?;
+                        }
+                    }
                 },
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,
