@@ -51,7 +51,8 @@ fn vm_run_ok() {
         assert_eq!(
             *want,
             *vm.last_popped(),
-            "incorrect value removed from stack, debug:\n{:?}",
+            "input: {}, incorrect value removed from stack, debug:\n{:?}",
+            input,
             vm.dump_stack(),
         );
     }

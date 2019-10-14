@@ -68,9 +68,8 @@ impl<'a> Vm<'a> {
     }
 
     fn unary_op(&mut self, op: UnaryOpcode) -> Result<()> {
-        let args = self
-            .pop_n(1)
-            .expect("stack did not have enough elements for unary operation");
+        let (start, end) = self.pop_n(1);
+        let args = &self.stack[start..end];
 
         let out = match (op, &args[0]) {
             (UnaryOpcode::Not, _) => match args[0] {
@@ -95,13 +94,12 @@ impl<'a> Vm<'a> {
     }
 
     fn binary_op(&mut self, op: BinaryOpcode) -> Result<()> {
-        let args = self
-            .pop_n(2)
-            .expect("stack did not have enough elements for binary operation");
+        let (start, end) = self.pop_n(2);
+        let args = &self.stack[start..end];
 
         match (&args[0], &args[1]) {
             // Integer operations.
-            (Object::Integer(r), Object::Integer(l)) => {
+            (Object::Integer(l), Object::Integer(r)) => {
                 let out = match op {
                     BinaryOpcode::Add => Object::Integer(l + r),
                     BinaryOpcode::Sub => Object::Integer(l - r),
@@ -117,7 +115,7 @@ impl<'a> Vm<'a> {
                 Ok(())
             }
             // Boolean operations.
-            (Object::Boolean(r), Object::Boolean(l)) => {
+            (Object::Boolean(l), Object::Boolean(r)) => {
                 let out = match op {
                     BinaryOpcode::Equal => l == r,
                     BinaryOpcode::NotEqual => l != r,
@@ -126,7 +124,7 @@ impl<'a> Vm<'a> {
                         return Err(Error::bad_arguments(
                             BadArgumentKind::BinaryOperatorUnsupported,
                             Opcode::Binary(op),
-                            &args,
+                            args,
                         ));
                     }
                 };
@@ -137,23 +135,32 @@ impl<'a> Vm<'a> {
             // Float and Float/Integer operations. Integers are automatically
             // coerced into floats for operations, and all of these operations
             // will produce a float result.
-            (Object::Float(r), Object::Float(l)) => self.binary_float_op(op, &args, *r, *l),
-            (Object::Integer(r), Object::Float(l)) => {
-                self.binary_float_op(op, &args, *r as f64, *l)
+            (Object::Float(l), Object::Float(r)) => {
+                let obj = self.binary_float_op(op, args, *l, *r)?;
+                self.push(obj);
+                Ok(())
             }
-            (Object::Float(r), Object::Integer(l)) => {
-                self.binary_float_op(op, &args, *r, *l as f64)
+            (Object::Integer(l), Object::Float(r)) => {
+                let obj = self.binary_float_op(op, args, *l as f64, *r)?;
+                self.push(obj);
+                Ok(())
+            }
+            (Object::Float(l), Object::Integer(r)) => {
+                let obj = self.binary_float_op(op, args, *l, *r as f64)?;
+                self.push(obj);
+                Ok(())
             }
             // Invalid combination.
             (_, _) => Err(Error::bad_arguments(
                 BadArgumentKind::BinaryOperatorUnsupported,
                 Opcode::Binary(op),
-                &args,
+                args,
             )),
         }
     }
 
-    fn binary_float_op(&mut self, op: BinaryOpcode, args: &[Object], r: f64, l: f64) -> Result<()> {
+    // Does not take &mut self and push directly to stack to simplify borrowing.
+    fn binary_float_op(&self, op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result<Object> {
         let out = match op {
             BinaryOpcode::Add => Object::Float(l + r),
             BinaryOpcode::Sub => Object::Float(l - r),
@@ -171,8 +178,7 @@ impl<'a> Vm<'a> {
             }
         };
 
-        self.push(out);
-        Ok(())
+        Ok(out)
     }
 
     fn push(&mut self, obj: Object) {
@@ -187,34 +193,25 @@ impl<'a> Vm<'a> {
         self.sp += 1;
     }
 
-    fn pop_n(&mut self, n: usize) -> Option<Vec<Object>> {
+    fn pop_n(&mut self, n: usize) -> (usize, usize) {
         if self.sp == 0 {
-            // Nothing on the stack, nothing to do.
-            return None;
+            // Nothing on the stack.
+            panic!("stack is empty, cannot pop {} elements", n);
         }
 
-        let mut out = Vec::with_capacity(n);
-        for _ in 0..n {
-            if self.sp == 0 {
-                // Ran out of elements on the stack.
-                return None;
-            }
+        let start = self.sp.checked_sub(n).expect("stack pointer underflow");
+        let end = self.sp;
 
-            // Clone this element and send it back to the caller. Because we
-            // reuse the stack space for output, cloning is a safer option than
-            // using references.
-            out.push(self.stack[self.sp - 1].clone());
-            self.sp -= 1;
-        }
-
-        // Must always return the requested number of elements.
         assert_eq!(
-            out.len(),
+            end - start,
             n,
-            "pop_n did not return the correct number of elements"
+            "must return indices for {} elements from stack",
+            n
         );
 
-        Some(out)
+        self.sp -= n;
+
+        (start, end)
     }
 }
 
@@ -243,12 +240,13 @@ impl Error {
             kind
         );
 
-        // Copy the arguments to avoid borrowing hassles for generating errors and
-        // swap the argument order from stack order to input order.
-        let mut args = args.to_vec();
-        args.reverse();
-
-        Self::Runtime(ErrorKind::BadArguments { kind, op, args })
+        Self::Runtime(ErrorKind::BadArguments {
+            kind,
+            op,
+            // Make a copy of args so they can return to the caller without
+            // referencing our owned stack.
+            args: args.to_vec(),
+        })
     }
 }
 
