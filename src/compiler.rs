@@ -10,6 +10,7 @@ use crate::{
     token::Token,
 };
 
+#[derive(Default)]
 pub struct Compiler {
     instructions: Vec<u8>,
     constants: Vec<Object>,
@@ -25,12 +26,7 @@ struct Emitted {
 
 impl Compiler {
     pub fn new() -> Self {
-        Compiler {
-            instructions: vec![],
-            constants: vec![],
-            last: None,
-            previous: None,
-        }
+        Compiler::default()
     }
 
     pub fn compile(&mut self, node: ast::Node) -> Result<()> {
