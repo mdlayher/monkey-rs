@@ -135,30 +135,25 @@ impl Compiler {
             self.emit(Opcode::Control(ControlOpcode::JumpNotTrue), vec![9999])?;
 
         self.compile(ast::Node::Statement(ast::Statement::Block(e.consequence)))?;
-
-        // Remove a duplicate pop that occurs in the middle of
-        // the conditional.
         self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
 
+        // Emit a jump with a placeholder that enables the null branch if there
+        // is no alternative.
+        let jump_pos = self.emit(Opcode::Control(ControlOpcode::Jump), vec![9999])?;
+
+        // Rewrite the jump with the correct instruction pointer.
+        self.change_operand(jump_not_true_pos, self.instructions.len())?;
+
         if let Some(a) = e.alternative {
-            // We have an alternative, set up a jump over it that
-            // the consequence above will hit and skip this block.
-            let jump_pos = self.emit(Opcode::Control(ControlOpcode::Jump), vec![9999])?;
-
-            // Rewrite the jump with the correct instruction pointer.
-            self.change_operand(jump_not_true_pos, self.instructions.len())?;
-
+            // We have an alternative, compile it.
             self.compile(ast::Node::Statement(ast::Statement::Block(a)))?;
-
-            // Remove a duplicate pop that occurs in the middle of
-            // the conditional.
             self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
-
-            self.change_operand(jump_pos, self.instructions.len())?;
         } else {
-            // Rewrite the jump with the correct instruction pointer.
-            self.change_operand(jump_not_true_pos, self.instructions.len())?;
+            // There is no alternative, emit a null.
+            self.emit(Opcode::Control(ControlOpcode::Null), vec![])?;
         }
+
+        self.change_operand(jump_pos, self.instructions.len())?;
 
         Ok(())
     }

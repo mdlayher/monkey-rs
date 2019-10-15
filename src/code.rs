@@ -26,6 +26,7 @@ pub enum ControlOpcode {
     False = 0x03,
     JumpNotTrue = 0x04,
     Jump = 0x05,
+    Null = 0x06,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -77,6 +78,7 @@ impl fmt::Display for ControlOpcode {
             Self::False => write!(f, "FALSE"),
             Self::JumpNotTrue => write!(f, "JUMP NOT TRUE"),
             Self::Jump => write!(f, "JUMP"),
+            Self::Null => write!(f, "NULL"),
         }
     }
 }
@@ -91,6 +93,7 @@ impl From<u8> for ControlOpcode {
             0x03 => ControlOpcode::False,
             0x04 => ControlOpcode::JumpNotTrue,
             0x05 => ControlOpcode::Jump,
+            0x06 => ControlOpcode::Null,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -284,6 +287,10 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             ControlOpcode::Jump => Definition {
                 name: "Jump",
                 operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::Null => Definition {
+                name: "Null",
+                operand_widths: vec![],
             },
         },
         Opcode::Unary(u) => match u {

@@ -99,12 +99,16 @@ impl<'a> Vm<'a> {
 
                 let truthy = match args[0] {
                     Object::Boolean(b) => b,
+                    Object::Null => false,
                     _ => true,
                 };
                 if !truthy {
                     c.seek(io::SeekFrom::Start(u64::from(idx)))
                         .map_err(Error::Io)?;
                 }
+            }
+            ControlOpcode::Null => {
+                self.push(Object::Null);
             }
         };
 
@@ -118,9 +122,11 @@ impl<'a> Vm<'a> {
 
         let out = match (op, &args[0]) {
             (UnaryOpcode::Not, _) => match args[0] {
+                // Invert booleans directly.
                 Object::Boolean(b) => Object::Boolean(!b),
-                // According to the compiler book, all non-boolean false
-                // values are considered truthy and should return false.
+                // !null is truthy.
+                Object::Null => object::TRUE,
+                // Anything else is considered truthy and should return false.
                 _ => object::FALSE,
             },
             (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),

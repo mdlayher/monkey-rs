@@ -181,11 +181,17 @@ fn compiler_ok() {
                 // jump not true
                 ControlOpcode::JumpNotTrue as u8,
                 0x00,
-                0x07,
+                0x0a,
                 // 10
                 ControlOpcode::Constant as u8,
                 0x00,
                 0x00,
+                // jump
+                ControlOpcode::Jump as u8,
+                0x00,
+                0x0b,
+                // null
+                ControlOpcode::Null as u8,
                 ControlOpcode::Pop as u8,
                 // 3333
                 ControlOpcode::Constant as u8,
