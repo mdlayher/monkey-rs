@@ -39,7 +39,7 @@ fn token_display() {
             }),
             "0x101",
         ),
-        (Token::Float(Float::new(1.23)), "1.23"),
+        (Token::Float(Float::from(1.23)), "1.23"),
         (Token::Assign, "="),
         (Token::Plus, "+"),
         (Token::Minus, "-"),

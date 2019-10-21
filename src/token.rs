@@ -128,18 +128,21 @@ pub struct Float(pub u64);
 
 impl fmt::Display for Float {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_f64())
+        let float: f64 = self.clone().into();
+        write!(f, "{}", float)
     }
 }
 
-impl Float {
-    /// Creates a new `Float` by accepting an input `f64`.
-    pub fn new(f: f64) -> Self {
+/// Convert from `Float` into `f64`.
+impl From<f64> for Float {
+    fn from(f: f64) -> Self {
         Self(f64::to_bits(f))
     }
+}
 
-    /// Converts a `Float` back to `f64` form.
-    pub fn to_f64(self) -> f64 {
+/// Convert to `Float` from `f64`.
+impl Into<f64> for Float {
+    fn into(self) -> f64 {
         f64::from_bits(self.0)
     }
 }

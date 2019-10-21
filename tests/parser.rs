@@ -59,7 +59,7 @@ fn parse_float_literal_expression() {
 
     let want = 0.1;
 
-    let got = if let ast::Statement::Expression(ast::Expression::Float(f)) = &prog.statements[0] {
+    let got = if let ast::Statement::Expression(ast::Expression::Float(f)) = prog.statements[0] {
         f
     } else {
         panic!("not a float expression");
@@ -67,7 +67,8 @@ fn parse_float_literal_expression() {
 
     // Direct equality comparison of floats isn't a good idea, see:
     // https://github.com/rust-lang/rust-clippy/issues/46.
-    assert!((want - got.to_f64()).abs() < std::f64::EPSILON);
+    let float: f64 = got.into();
+    assert!((want - float).abs() < std::f64::EPSILON);
 }
 
 #[test]

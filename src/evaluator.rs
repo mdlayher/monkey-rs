@@ -34,7 +34,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
         ast::Node::Expression(expr) => match expr {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),
             ast::Expression::Boolean(b) => Ok(Object::Boolean(b)),
-            ast::Expression::Float(f) => Ok(Object::Float(f.to_f64())),
+            ast::Expression::Float(f) => Ok(Object::Float(f.into())),
             ast::Expression::String(s) => Ok(Object::String(s)),
             ast::Expression::Array(a) => Ok(Object::Array(object::Array {
                 elements: eval_expressions(a.elements, env)?,

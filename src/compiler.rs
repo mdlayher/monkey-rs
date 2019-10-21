@@ -47,7 +47,7 @@ impl Compiler {
                     self.emit(Opcode::Control(op), vec![])?;
                 }
                 ast::Expression::Float(f) => {
-                    let oper = vec![self.add_constant(Object::Float(f.to_f64()))];
+                    let oper = vec![self.add_constant(Object::Float(f.into()))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
                 ast::Expression::Integer(i) => {

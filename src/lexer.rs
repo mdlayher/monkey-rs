@@ -186,7 +186,7 @@ impl<'a> Lexer<'a> {
 
         // TODO(mdlayher): this detection logic needs work.
         if chars.contains(&'.') {
-            Ok(Token::Float(Float::new(
+            Ok(Token::Float(Float::from(
                 f64::from_str(&chars.iter().collect::<String>()).map_err(Error::IllegalFloat)?,
             )))
         } else {

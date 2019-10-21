@@ -158,8 +158,8 @@ if (5 < 10) {
         }),
         Token::Semicolon,
         //
-        Token::Float(Float::new(1.01)),
-        Token::Float(Float::new(2.)),
+        Token::Float(Float::from(1.01)),
+        Token::Float(Float::from(2.)),
         //
         Token::Integer(Integer {
             radix: Radix::Decimal,
