@@ -58,7 +58,7 @@ fn vm_run_ok() {
     for (input, want) in &tests {
         let mut stack = new_stack();
         let mut vm = Vm::new(&mut stack);
-        vm.run(&compile(input)).expect("failed to run VM");
+        vm.run(compile(input)).expect("failed to run VM");
 
         assert_eq!(
             *want,
@@ -127,7 +127,7 @@ fn vm_runtime_errors() {
         let mut stack = new_stack();
         let mut vm = Vm::new(&mut stack);
         let err = vm
-            .run(&compile(input))
+            .run(compile(input))
             .expect_err("run did not return an error");
 
         if let Error::Runtime(got) = err {
@@ -144,7 +144,7 @@ fn vm_grow_stack() {
     // are added.
     let mut stack = vec![];
     let mut vm = Vm::new(&mut stack);
-    vm.run(&compile("1 + (1 + (1 + (1 + 1)))"))
+    vm.run(compile("1 + (1 + (1 + (1 + 1)))"))
         .expect("failed to run VM");
 
     // Expect the stack to have grown at least large enough to hold all 5

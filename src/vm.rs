@@ -45,15 +45,13 @@ impl<'a> Vm<'a> {
     }
 
     /// Runs the virtual machine with the input `compiler::Bytecode`.
-    pub fn run(&mut self, bc: &compiler::Bytecode) -> Result<()> {
-        let len = bc.instructions.len() as u64;
-        let mut c = io::Cursor::new(&bc.instructions);
-
-        while c.position() < len {
-            let op = Opcode::from(c.read_u8().map_err(Error::Io)?);
+    pub fn run(&mut self, bc: compiler::Bytecode) -> Result<()> {
+        let mut ctx = RunContext::new(bc);
+        while ctx.run() {
+            let op = Opcode::from(ctx.read_u8()?);
 
             match op {
-                Opcode::Control(ctrl) => self.control_op(&mut c, ctrl, &bc.constants)?,
+                Opcode::Control(ctrl) => self.control_op(&mut ctx, ctrl)?,
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,
             };
@@ -63,16 +61,11 @@ impl<'a> Vm<'a> {
     }
 
     /// Executes a control operation.
-    fn control_op(
-        &mut self,
-        c: &mut io::Cursor<&Vec<u8>>,
-        op: ControlOpcode,
-        consts: &[Object],
-    ) -> Result<()> {
+    fn control_op(&mut self, ctx: &mut RunContext, op: ControlOpcode) -> Result<()> {
         match op {
             ControlOpcode::Constant => {
-                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                self.push(consts[idx as usize].clone());
+                let idx = ctx.read_u16()?;
+                self.push(ctx.consts[idx as usize].clone());
             }
             ControlOpcode::Pop => {
                 self.pop_n(1);
@@ -85,14 +78,13 @@ impl<'a> Vm<'a> {
             }
             ControlOpcode::Jump => {
                 // Immediately jump to the specified index.
-                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
-                c.seek(io::SeekFrom::Start(u64::from(idx)))
-                    .map_err(Error::Io)?;
+                let idx = ctx.read_u16()?;
+                ctx.seek(io::SeekFrom::Start(u64::from(idx)))?;
             }
             ControlOpcode::JumpNotTrue => {
                 // Conditionally jump to the specified index if the
                 // top value on the stack is not truthy.
-                let idx = c.read_u16::<BigEndian>().map_err(Error::Io)?;
+                let idx = ctx.read_u16()?;
 
                 let (start, end) = self.pop_n(1);
                 let args = &self.stack[start..end];
@@ -103,8 +95,7 @@ impl<'a> Vm<'a> {
                     _ => true,
                 };
                 if !truthy {
-                    c.seek(io::SeekFrom::Start(u64::from(idx)))
-                        .map_err(Error::Io)?;
+                    ctx.seek(io::SeekFrom::Start(u64::from(idx)))?;
                 }
             }
             ControlOpcode::Null => {
@@ -268,6 +259,44 @@ impl<'a> Vm<'a> {
         self.sp -= n;
 
         (start, end)
+    }
+}
+
+/// Contains context for a running `Vm` bytecode program.
+struct RunContext {
+    ins_len: u64,
+    c: io::Cursor<Vec<u8>>,
+    consts: Vec<Object>,
+}
+
+impl RunContext {
+    /// Produces a `RunContext` from input `compiler::Bytecode`.
+    fn new(bc: compiler::Bytecode) -> Self {
+        RunContext {
+            ins_len: bc.instructions.len() as u64,
+            c: io::Cursor::new(bc.instructions),
+            consts: bc.constants,
+        }
+    }
+
+    /// Determines if more instructions can be read and executed.
+    fn run(&self) -> bool {
+        self.c.position() < self.ins_len
+    }
+
+    /// Seeks to the specified location in the instructions stream.
+    fn seek(&mut self, pos: io::SeekFrom) -> Result<u64> {
+        self.c.seek(pos).map_err(Error::Io)
+    }
+
+    /// Reads a `u8` value from the instructions stream.
+    fn read_u8(&mut self) -> Result<u8> {
+        self.c.read_u8().map_err(Error::Io)
+    }
+
+    /// Reads a `u16` value from the instructions stream.
+    fn read_u16(&mut self) -> Result<u16> {
+        self.c.read_u16::<BigEndian>().map_err(Error::Io)
     }
 }
 
