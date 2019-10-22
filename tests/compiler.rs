@@ -235,6 +235,74 @@ fn compiler_ok() {
                 Object::Integer(3333),
             ],
         ),
+        (
+            "let one = 1; let two = 2;",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // set 1
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                // 2
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // set 2
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x01,
+            ],
+            vec![Object::Integer(1), Object::Integer(2)],
+        ),
+        (
+            "let one = 1; one;",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // set 1
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                // get 1
+                ControlOpcode::GetGlobal as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(1)],
+        ),
+        (
+            "let one = 1; let two = one; two;",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // set one
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                // get one
+                ControlOpcode::GetGlobal as u8,
+                0x00,
+                0x00,
+                // set two
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x01,
+                // get two
+                ControlOpcode::GetGlobal as u8,
+                0x00,
+                0x01,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(1)],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
@@ -243,6 +311,39 @@ fn compiler_ok() {
         // Check constants first for easier debugging.
         assert_eq!(*constants, bc.constants, "unexpected constants");
         assert_instructions(instructions, &bc.instructions);
+    }
+}
+
+#[test]
+fn symbol_table_ok() {
+    let mut st = SymbolTable::default();
+    st.define("a".to_string());
+
+    let tests = vec![
+        (
+            "b",
+            Symbol {
+                scope: Scope::Global,
+                index: 1,
+            },
+        ),
+        (
+            "c",
+            Symbol {
+                scope: Scope::Global,
+                index: 2,
+            },
+        ),
+    ];
+
+    for (name, symbol) in &tests {
+        let idx = st.define(name.to_string());
+        let s = st.resolve(name).expect("a symbol should be defined");
+
+        assert_eq!(idx, s.index);
+        assert_eq!(s, symbol);
+
+        st.resolve(&"a").expect("a should always be defined");
     }
 }
 

@@ -27,6 +27,8 @@ pub enum ControlOpcode {
     JumpNotTrue = 0x04,
     Jump = 0x05,
     Null = 0x06,
+    GetGlobal = 0x07,
+    SetGlobal = 0x08,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -79,6 +81,8 @@ impl fmt::Display for ControlOpcode {
             Self::JumpNotTrue => write!(f, "JUMP NOT TRUE"),
             Self::Jump => write!(f, "JUMP"),
             Self::Null => write!(f, "NULL"),
+            Self::GetGlobal => write!(f, "GET GLOBAL"),
+            Self::SetGlobal => write!(f, "SET GLOBAL"),
         }
     }
 }
@@ -94,6 +98,8 @@ impl From<u8> for ControlOpcode {
             0x04 => ControlOpcode::JumpNotTrue,
             0x05 => ControlOpcode::Jump,
             0x06 => ControlOpcode::Null,
+            0x07 => ControlOpcode::GetGlobal,
+            0x08 => ControlOpcode::SetGlobal,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -291,6 +297,14 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             ControlOpcode::Null => Definition {
                 name: "Null",
                 operand_widths: vec![],
+            },
+            ControlOpcode::GetGlobal => Definition {
+                name: "GetGlobal",
+                operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::SetGlobal => Definition {
+                name: "SetGlobal",
+                operand_widths: vec![Width::Two],
             },
         },
         Opcode::Unary(u) => match u {

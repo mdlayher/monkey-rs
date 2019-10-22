@@ -1,6 +1,7 @@
 //! A compiler for the Monkey programming language from
 //! <https://compilerbook.com/>.
 
+use std::collections::HashMap;
 use std::{error, fmt, mem, result};
 
 use crate::{
@@ -16,6 +17,7 @@ pub struct Compiler {
     constants: Vec<Object>,
     last: Option<Emitted>,
     previous: Option<Emitted>,
+    symbols: SymbolTable,
 }
 
 #[derive(Debug)]
@@ -68,6 +70,18 @@ impl Compiler {
                     self.emit(Opcode::Unary(op), vec![])?;
                 }
                 ast::Expression::If(i) => self.compile_if_expression(i)?,
+                ast::Expression::Identifier(id) => {
+                    // Attempt to resolve the identifier or return an error if
+                    // it is undefined.
+                    let s = self
+                        .symbols
+                        .resolve(&id)
+                        .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
+
+                    // End the borrow of s by just taking the index we need.
+                    let index = s.index;
+                    self.emit(Opcode::Control(ControlOpcode::GetGlobal), vec![index])?;
+                }
                 _ => panic!("unhandled expression type"),
             },
             ast::Node::Statement(s) => match s {
@@ -79,6 +93,13 @@ impl Compiler {
                     for s in b.statements {
                         self.compile(ast::Node::Statement(s))?;
                     }
+                }
+                ast::Statement::Let(l) => {
+                    self.compile(ast::Node::Expression(l.value))?;
+
+                    // Define this identifier with an index.
+                    let idx = self.symbols.define(l.name);
+                    self.emit(Opcode::Control(ControlOpcode::SetGlobal), vec![idx])?;
                 }
                 _ => panic!("unhandled statement type"),
             },
@@ -227,18 +248,64 @@ pub struct Bytecode {
     pub constants: Vec<Object>,
 }
 
+/// A table that can be used to define and resolve `Symbols`.
+#[derive(Debug, Default)]
+pub struct SymbolTable {
+    pub store: HashMap<String, Symbol>,
+    pub num_definitions: usize,
+}
+
+impl SymbolTable {
+    /// Defines a new `Symbol` by name.
+    pub fn define(&mut self, name: String) -> usize {
+        let index = self.num_definitions;
+        self.store.insert(
+            name,
+            Symbol {
+                scope: Scope::Global,
+                index,
+            },
+        );
+
+        self.num_definitions += 1;
+        index
+    }
+
+    /// Resolves a `Symbol` by its name and returns whether or not it
+    /// was defined.
+    pub fn resolve(&self, name: &str) -> Option<&Symbol> {
+        self.store.get(name)
+    }
+}
+
+/// A symbol definition.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Symbol {
+    //pub name: String,
+    pub scope: Scope,
+    pub index: usize,
+}
+
+/// The scope of a symbol.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Scope {
+    Global,
+}
+
 /// A Result type specialized use with for an Error.
 pub type Result<T> = result::Result<T, Error>;
 
 /// Specifies the different classes of errors which may occur.
 #[derive(Debug)]
 pub enum Error {
+    Compile(ErrorKind),
     Code(code::Error),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::Compile(k) => write!(f, "compile error: {}", k),
             Error::Code(c) => write!(f, "code error: {}", c),
         }
     }
@@ -247,7 +314,22 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn cause(&self) -> Option<&dyn error::Error> {
         match self {
+            Error::Compile(_) => None,
             Error::Code(c) => Some(c),
+        }
+    }
+}
+
+/// Describes compilation errors which may occur.
+#[derive(Debug, PartialEq)]
+pub enum ErrorKind {
+    UndefinedIdentifier(String),
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ErrorKind::UndefinedIdentifier(id) => write!(f, "undefined identifier: \"{}\"", id,),
         }
     }
 }

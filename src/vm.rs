@@ -101,6 +101,7 @@ impl<'a> Vm<'a> {
             ControlOpcode::Null => {
                 self.push(Object::Null);
             }
+            _ => unimplemented!(),
         };
 
         Ok(())
