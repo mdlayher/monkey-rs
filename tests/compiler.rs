@@ -303,6 +303,37 @@ fn compiler_ok() {
             ],
             vec![Object::Integer(1)],
         ),
+        (
+            r#""monkey""#,
+            vec![
+                // monkey
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::String("monkey".to_string())],
+        ),
+        (
+            r#""mon" + "key""#,
+            vec![
+                // mon
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // key
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // +
+                BinaryOpcode::Add as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::String("mon".to_string()),
+                Object::String("key".to_string()),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

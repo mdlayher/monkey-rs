@@ -59,6 +59,8 @@ fn vm_run_ok() {
             "let one = 1; let two = one + one; one + two;",
             Object::Integer(3),
         ),
+        (r#""monkey";"#, Object::String("monkey".to_string())),
+        (r#""mon" + "key";"#, Object::String("monkey".to_string())),
     ];
 
     for (input, want) in &tests {

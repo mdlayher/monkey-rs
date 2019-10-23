@@ -213,6 +213,21 @@ impl<'a> Vm<'a> {
                 self.push(obj);
                 Ok(())
             }
+            // String operations.
+            (Object::String(l), Object::String(r)) => {
+                // Only concatentation is supported on strings.
+                if op == BinaryOpcode::Add {
+                    let out = Object::String(l.clone() + r);
+                    self.push(out);
+                    Ok(())
+                } else {
+                    Err(Error::bad_arguments(
+                        BadArgumentKind::BinaryOperatorUnsupported,
+                        Opcode::Binary(op),
+                        args,
+                    ))
+                }
+            }
             // Invalid combination.
             (_, _) => Err(Error::bad_arguments(
                 BadArgumentKind::BinaryOperatorUnsupported,

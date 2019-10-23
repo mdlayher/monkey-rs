@@ -52,11 +52,23 @@ impl Compiler {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
+                ast::Expression::Identifier(id) => {
+                    // Attempt to resolve the identifier or return an error if
+                    // it is undefined.
+                    let s = self
+                        .symbols
+                        .resolve(&id)
+                        .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
+
+                    // End the borrow of s by just taking the index we need.
+                    let index = s.index;
+                    self.emit(Opcode::Control(ControlOpcode::GetGlobal), vec![index])?;
+                }
+                ast::Expression::If(i) => self.compile_if_expression(i)?,
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(Object::Integer(i.value))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
-
                 ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Prefix(p) => {
                     self.compile(ast::Node::Expression(*p.right))?;
@@ -69,18 +81,9 @@ impl Compiler {
 
                     self.emit(Opcode::Unary(op), vec![])?;
                 }
-                ast::Expression::If(i) => self.compile_if_expression(i)?,
-                ast::Expression::Identifier(id) => {
-                    // Attempt to resolve the identifier or return an error if
-                    // it is undefined.
-                    let s = self
-                        .symbols
-                        .resolve(&id)
-                        .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
-
-                    // End the borrow of s by just taking the index we need.
-                    let index = s.index;
-                    self.emit(Opcode::Control(ControlOpcode::GetGlobal), vec![index])?;
+                ast::Expression::String(s) => {
+                    let oper = vec![self.add_constant(Object::String(s))];
+                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
                 _ => panic!("unhandled expression type"),
             },
