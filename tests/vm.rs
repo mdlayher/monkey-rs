@@ -53,6 +53,12 @@ fn vm_run_ok() {
             "if ((if (false) { 10 })) { 10 } else { 20 }",
             Object::Integer(20),
         ),
+        ("let one = 1; one;", Object::Integer(1)),
+        ("let one = 1; let two = 2; one + two;", Object::Integer(3)),
+        (
+            "let one = 1; let two = one + one; one + two;",
+            Object::Integer(3),
+        ),
     ];
 
     for (input, want) in &tests {

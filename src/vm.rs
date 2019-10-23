@@ -21,6 +21,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 pub struct Vm<'a> {
     stack: &'a mut Vec<Object>,
     sp: usize,
+    globals: Vec<Object>,
 }
 
 /// Creates a stack of a suitable size for use with `Vm::new`.
@@ -31,7 +32,12 @@ pub fn new_stack() -> Vec<Object> {
 impl<'a> Vm<'a> {
     /// Creates a new `Vm` that uses the input stack.
     pub fn new(stack: &'a mut Vec<Object>) -> Self {
-        Vm { stack, sp: 0 }
+        Vm {
+            stack,
+            sp: 0,
+            // TODO: grow globals vector as needed.
+            globals: vec![Object::Null; 64],
+        }
     }
 
     /// Returns the last `Object` popped off the stack after calling `run`.
@@ -101,7 +107,20 @@ impl<'a> Vm<'a> {
             ControlOpcode::Null => {
                 self.push(Object::Null);
             }
-            _ => unimplemented!(),
+            ControlOpcode::GetGlobal => {
+                // Read a global from the operand's specified index and push
+                // its value onto the stack.
+                let idx = ctx.read_u16()?;
+                self.push(self.globals[idx as usize].clone());
+            }
+            ControlOpcode::SetGlobal => {
+                // Just need the index of the single element.
+                let (start, _) = self.pop_n(1);
+
+                // Register a new global with the operand's specified index.
+                let idx = ctx.read_u16()?;
+                self.globals[idx as usize] = self.stack[start].clone();
+            }
         };
 
         Ok(())
