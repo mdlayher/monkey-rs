@@ -313,7 +313,7 @@ impl fmt::Display for Hashable {
 }
 
 /// The object representation of a Monkey hash.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Hash {
     pub pairs: HashMap<Hashable, Object>,
 }

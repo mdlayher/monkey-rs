@@ -404,6 +404,49 @@ fn compiler_ok() {
                 Object::Integer(4),
             ],
         ),
+        (
+            "{}",
+            vec![
+                // hash
+                CompositeOpcode::Hash as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![],
+        ),
+        (
+            "{1: 2, 3: 4}",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // 2
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // 3
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                // 4
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x03,
+                // hash
+                CompositeOpcode::Hash as u8,
+                0x00,
+                0x04,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(3),
+                Object::Integer(4),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

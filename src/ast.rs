@@ -261,7 +261,7 @@ impl fmt::Display for IndexExpression {
 }
 
 /// A hash literal expression.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct HashLiteral {
     pub pairs: HashMap<Expression, Expression>,
 }

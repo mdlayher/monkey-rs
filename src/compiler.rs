@@ -66,6 +66,35 @@ impl Compiler {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
+                ast::Expression::Hash(h) => {
+                    // This is wasteful and silly, but it's easier to temporarily
+                    // collect the keys into a vector and sort the output than
+                    // it is to retrofit all HashMap uses with BTreeMap.
+                    //
+                    // TODO(mdlayher): clean this up.
+                    let mut keys = Vec::with_capacity(h.pairs.len());
+                    for k in h.pairs.keys() {
+                        keys.push(k);
+                    }
+
+                    // Sort each item by comparing their lexical string order.
+                    keys.sort_by(|a, b| format!("{}", a).partial_cmp(&format!("{}", b)).unwrap());
+
+                    // Compile each key/value pair in order.
+                    for k in keys {
+                        // TODO(mdlayher): remove cloning?
+                        self.compile(ast::Node::Expression(k.clone()))?;
+
+                        let v = h.pairs.get(k).expect("value must exist");
+                        self.compile(ast::Node::Expression(v.clone()))?;
+                    }
+
+                    self.emit(
+                        Opcode::Composite(CompositeOpcode::Hash),
+                        // Each pair is 2 elements.
+                        vec![h.pairs.len() * 2],
+                    )?;
+                }
                 ast::Expression::Identifier(id) => {
                     // Attempt to resolve the identifier or return an error if
                     // it is undefined.

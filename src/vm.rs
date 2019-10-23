@@ -244,6 +244,7 @@ impl<'a> Vm<'a> {
         // by the composite opcode's operand.
         let n = match op {
             CompositeOpcode::Array => ctx.read_u16()?,
+            _ => unimplemented!(),
         };
 
         let (start, end) = self.pop_n(n as usize);
