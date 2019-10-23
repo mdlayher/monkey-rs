@@ -16,6 +16,7 @@ pub enum Opcode {
     Control(ControlOpcode),
     Unary(UnaryOpcode),
     Binary(BinaryOpcode),
+    Composite(CompositeOpcode),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -49,12 +50,18 @@ pub enum BinaryOpcode {
     GreaterThan = 0x27,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CompositeOpcode {
+    Array = 0x30,
+}
+
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Control(c) => c.fmt(f),
             Self::Unary(u) => u.fmt(f),
             Self::Binary(b) => b.fmt(f),
+            Self::Composite(c) => c.fmt(f),
         }
     }
 }
@@ -66,6 +73,7 @@ impl From<u8> for Opcode {
             0x00..=0x0f => Self::Control(ControlOpcode::from(v)),
             0x10..=0x1f => Self::Unary(UnaryOpcode::from(v)),
             0x20..=0x2f => Self::Binary(BinaryOpcode::from(v)),
+            0x30..=0x3f => Self::Composite(CompositeOpcode::from(v)),
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
         }
     }
@@ -157,6 +165,24 @@ impl From<u8> for BinaryOpcode {
     }
 }
 
+impl fmt::Display for CompositeOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Array => write!(f, "[]"),
+        }
+    }
+}
+
+impl From<u8> for CompositeOpcode {
+    /// Convert from a u8 to an Opcode.
+    fn from(v: u8) -> Self {
+        match v {
+            0x30 => CompositeOpcode::Array,
+            _ => panic!("unhandled u8 to CompositeOpcode conversion: {}", v),
+        }
+    }
+}
+
 // TODO(mdlayher): probably make the API accept a byte slice owned by the caller.
 
 /// Produces bytecode for one instruction from an input `Opcode` and its
@@ -188,6 +214,7 @@ pub fn make(op: Opcode, operands: &[usize]) -> Result<Vec<u8>> {
         Opcode::Control(c) => c as u8,
         Opcode::Unary(u) => u as u8,
         Opcode::Binary(b) => b as u8,
+        Opcode::Composite(c) => c as u8,
     };
     buf.push(byte);
 
@@ -349,6 +376,12 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             BinaryOpcode::GreaterThan => Definition {
                 name: "GreaterThan",
                 operand_widths: vec![],
+            },
+        },
+        Opcode::Composite(c) => match c {
+            CompositeOpcode::Array => Definition {
+                name: "Array",
+                operand_widths: vec![Width::Two],
             },
         },
     }

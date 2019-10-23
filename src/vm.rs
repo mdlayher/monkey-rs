@@ -10,7 +10,7 @@ use std::{
 };
 
 use crate::{
-    code::{BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
+    code::{BinaryOpcode, CompositeOpcode, ControlOpcode, Opcode, UnaryOpcode},
     compiler,
     object::{self, Object},
 };
@@ -60,6 +60,7 @@ impl<'a> Vm<'a> {
                 Opcode::Control(ctrl) => self.control_op(&mut ctx, ctrl)?,
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,
+                Opcode::Composite(com) => self.composite_op(&mut ctx, com)?,
             };
         }
 
@@ -237,6 +238,29 @@ impl<'a> Vm<'a> {
         }
     }
 
+    /// Executes a composite operation against multiple objects.
+    fn composite_op(&mut self, ctx: &mut RunContext, op: CompositeOpcode) -> Result<()> {
+        // Read the appropriate number of elements from the stack as indicated
+        // by the composite opcode's operand.
+        let n = match op {
+            CompositeOpcode::Array => ctx.read_u16()?,
+        };
+
+        let (start, end) = self.pop_n(n as usize);
+        let args = &self.stack[start..end];
+
+        // Copy each argument into elements to return as an array object.
+        let mut elements = Vec::with_capacity(args.len());
+        for a in args {
+            // The stack owns these elements so we must clone them to add
+            // array elements.
+            elements.push(a.clone())
+        }
+
+        self.push(Object::Array(object::Array { elements }));
+        Ok(())
+    }
+
     /// Executes a binary float operation.
     // Does not take &mut self and push directly to stack to simplify borrowing.
     fn binary_float_op(&self, op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result<Object> {
@@ -276,8 +300,8 @@ impl<'a> Vm<'a> {
     /// Provides start and end indices for a slice of the stack that holds
     /// `n` elements.
     fn pop_n(&mut self, n: usize) -> (usize, usize) {
-        if self.sp == 0 {
-            // Nothing on the stack.
+        if self.sp == 0 && n > 0 {
+            // Tried to pop elements, but nothing is on the stack.
             panic!("stack is empty, cannot pop {} elements", n);
         }
 

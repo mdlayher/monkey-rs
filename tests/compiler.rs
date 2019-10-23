@@ -334,6 +334,76 @@ fn compiler_ok() {
                 Object::String("key".to_string()),
             ],
         ),
+        (
+            "[]",
+            vec![
+                // array
+                CompositeOpcode::Array as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![],
+        ),
+        (
+            "[1, 2, 3]",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // 2
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // 3
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                // array
+                CompositeOpcode::Array as u8,
+                0x00,
+                0x03,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)],
+        ),
+        (
+            "[1 + 2, 3 - 4]",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // 2
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // +
+                BinaryOpcode::Add as u8,
+                // 3
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                // 4
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x03,
+                // -
+                BinaryOpcode::Sub as u8,
+                // array
+                CompositeOpcode::Array as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::Integer(3),
+                Object::Integer(4),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

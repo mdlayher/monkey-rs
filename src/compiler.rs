@@ -6,7 +6,7 @@ use std::{error, fmt, mem, result};
 
 use crate::{
     ast,
-    code::{self, BinaryOpcode, ControlOpcode, Opcode, UnaryOpcode},
+    code::{self, BinaryOpcode, CompositeOpcode, ControlOpcode, Opcode, UnaryOpcode},
     object::Object,
     token::Token,
 };
@@ -39,6 +39,20 @@ impl Compiler {
                 }
             }
             ast::Node::Expression(e) => match e {
+                ast::Expression::Array(a) => {
+                    // Compile each of the expressions in an array, and then
+                    // emit an Array opcode with the number of elements
+                    // belonging to that array as an operand.
+                    for e in &a.elements {
+                        // TODO(mdlayher): remove cloning?
+                        self.compile(ast::Node::Expression(e.clone()))?;
+                    }
+
+                    self.emit(
+                        Opcode::Composite(CompositeOpcode::Array),
+                        vec![a.elements.len()],
+                    )?;
+                }
                 ast::Expression::Boolean(b) => {
                     let op = if b {
                         ControlOpcode::True

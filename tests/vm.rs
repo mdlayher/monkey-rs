@@ -61,6 +61,19 @@ fn vm_run_ok() {
         ),
         (r#""monkey";"#, Object::String("monkey".to_string())),
         (r#""mon" + "key";"#, Object::String("monkey".to_string())),
+        ("[]", Object::Array(object::Array::default())),
+        (
+            "[1, 2, 3]",
+            Object::Array(object::Array {
+                elements: vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)],
+            }),
+        ),
+        (
+            r#"[1 + 2, "foo" + "bar"]"#,
+            Object::Array(object::Array {
+                elements: vec![Object::Integer(3), Object::String("foobar".to_string())],
+            }),
+        ),
     ];
 
     for (input, want) in &tests {

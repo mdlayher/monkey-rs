@@ -275,7 +275,7 @@ fn builtin_rest(args: &[Object]) -> Result<Object> {
 }
 
 /// The object representation of a Monkey array.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Array {
     pub elements: Vec<Object>,
 }
