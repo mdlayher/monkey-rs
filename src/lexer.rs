@@ -238,6 +238,7 @@ fn lookup_keyword(s: &str) -> Option<Token> {
         "if" => Some(Token::If),
         "else" => Some(Token::Else),
         "return" => Some(Token::Return),
+        "set" => Some(Token::Set),
         _ => None,
     }
 }

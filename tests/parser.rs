@@ -300,6 +300,21 @@ fn parse_hash_expressions() {
 }
 
 #[test]
+fn parse_set_expressions() {
+    let tests = vec![
+        (r#"set{1, "foo", true}"#, r#"set{"foo", 1, true}"#),
+        ("set{1}", "set{1}"),
+        ("set{1, 1, 1, 2}", "set{1, 2}"),
+    ];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
 fn parse_operator_precedence() {
     let tests = vec![
         ("-a * b", "((-a) * b)"),

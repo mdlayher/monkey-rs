@@ -5,7 +5,7 @@ use crate::token;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 /// Any AST node in a Monkey program.
@@ -127,6 +127,7 @@ pub enum Expression {
     Call(CallExpression),
     Index(IndexExpression),
     Hash(HashLiteral),
+    Set(SetLiteral),
 }
 
 impl fmt::Display for Expression {
@@ -145,6 +146,7 @@ impl fmt::Display for Expression {
             Expression::Call(c) => c.fmt(f),
             Expression::Index(i) => i.fmt(f),
             Expression::Hash(h) => h.fmt(f),
+            Expression::Set(s) => s.fmt(f),
         }
     }
 }
@@ -285,5 +287,33 @@ impl fmt::Display for HashLiteral {
         // Sort for deterministic output.
         pairs.sort();
         write!(f, "{{{}}}", pairs.join(", "))
+    }
+}
+
+/// A set literal expression.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct SetLiteral {
+    pub set: HashSet<Expression>,
+}
+
+// This is a bit of a hack, but we need all Expressions to implement Hasher,
+// although we will never hash a SetLiteral itself.
+#[allow(clippy::derive_hash_xor_eq)]
+impl Hash for SetLiteral {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        panic!("SetLiteral cannot be hashed");
+    }
+}
+
+impl fmt::Display for SetLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut items = vec![];
+        for e in &self.set {
+            items.push(format!("{}", e));
+        }
+
+        // Sort for deterministic output.
+        items.sort();
+        write!(f, "set{{{}}}", items.join(", "))
     }
 }

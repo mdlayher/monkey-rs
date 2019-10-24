@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use mdl_monkey::{
     ast,
@@ -111,6 +111,64 @@ fn vm_run_ok() {
         ("{1: 1}[0]", Object::Null),
         ("{}[true]", Object::Null),
         ("{1: {true: 2}, 2: 2}[1][true]", Object::Integer(2)),
+        ("set{}", Object::Set(object::Set::default())),
+        (
+            "set{0, 0, 1}",
+            Object::Set(object::Set {
+                set: {
+                    let mut s = HashSet::new();
+                    s.insert(Hashable::Integer(0));
+                    s.insert(Hashable::Integer(1));
+                    s
+                },
+            }),
+        ),
+        ("set{0}[0]", object::TRUE),
+        ("set{0}[true]", object::FALSE),
+        ("set{0, 1} < set{1}", object::FALSE),
+        ("set{0, 1} > set{1}", object::TRUE),
+        (
+            "set{0} + set{1}",
+            Object::Set(object::Set {
+                set: {
+                    let mut s = HashSet::new();
+                    s.insert(Hashable::Integer(0));
+                    s.insert(Hashable::Integer(1));
+                    s
+                },
+            }),
+        ),
+        (
+            "set{1, 0} - set{1}",
+            Object::Set(object::Set {
+                set: {
+                    let mut s = HashSet::new();
+                    s.insert(Hashable::Integer(0));
+                    s
+                },
+            }),
+        ),
+        (
+            "set{1, 0} * set{1}",
+            Object::Set(object::Set {
+                set: {
+                    let mut s = HashSet::new();
+                    s.insert(Hashable::Integer(1));
+                    s
+                },
+            }),
+        ),
+        (
+            "set{1, 0} / set{1, 2}",
+            Object::Set(object::Set {
+                set: {
+                    let mut s = HashSet::new();
+                    s.insert(Hashable::Integer(0));
+                    s.insert(Hashable::Integer(2));
+                    s
+                },
+            }),
+        ),
     ];
 
     for (input, want) in &tests {

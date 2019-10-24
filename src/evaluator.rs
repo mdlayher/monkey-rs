@@ -136,6 +136,9 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
 
                 Ok(Object::Hash(object::Hash { pairs }))
             }
+            // The evaluator is deprecated and new types will be handled
+            // exclusively by the compiler.
+            _ => unimplemented!(),
         },
     }
 }

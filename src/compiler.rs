@@ -132,6 +132,27 @@ impl Compiler {
 
                     self.emit(Opcode::Unary(op), vec![])?;
                 }
+                ast::Expression::Set(s) => {
+                    // This is wasteful and silly, but it's easier to temporarily
+                    // collect the keys into a vector and sort the output than
+                    // it is to retrofit all HashMap uses with BTreeMap.
+                    //
+                    // TODO(mdlayher): clean this up.
+                    let mut items = Vec::with_capacity(s.set.len());
+                    for s in &s.set {
+                        items.push(s);
+                    }
+
+                    // Sort each item by comparing their lexical string order.
+                    items.sort_by(|a, b| format!("{}", a).partial_cmp(&format!("{}", b)).unwrap());
+
+                    // Compile each item in order.
+                    for i in items {
+                        self.compile(ast::Node::Expression(i.clone()))?;
+                    }
+
+                    self.emit(Opcode::Composite(CompositeOpcode::Set), vec![s.set.len()])?;
+                }
                 ast::Expression::String(s) => {
                     let oper = vec![self.add_constant(Object::String(s))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;

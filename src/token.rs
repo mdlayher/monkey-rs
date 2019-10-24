@@ -49,6 +49,7 @@ pub enum Token {
     If,
     Else,
     Return,
+    Set,
 }
 
 impl fmt::Display for Token {
@@ -91,6 +92,7 @@ impl fmt::Display for Token {
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
             Token::Return => write!(f, "return"),
+            Token::Set => write!(f, "set"),
         }
     }
 }

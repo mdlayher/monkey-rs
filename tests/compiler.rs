@@ -481,6 +481,41 @@ fn compiler_ok() {
             ],
             vec![Object::String("foo".to_string())],
         ),
+        (
+            "set{0, 0, 1}",
+            vec![
+                // 0
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // set
+                CompositeOpcode::Set as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(0), Object::Integer(1)],
+        ),
+        (
+            "set{}[0]",
+            vec![
+                // set
+                CompositeOpcode::Set as u8,
+                0x00,
+                0x00,
+                // 0
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                BinaryOpcode::Index as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(0)],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

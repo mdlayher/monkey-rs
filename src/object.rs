@@ -3,7 +3,7 @@
 
 use crate::ast;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::error;
 use std::fmt;
@@ -27,6 +27,7 @@ pub enum Object {
     Builtin(Builtin),
     Array(Array),
     Hash(Hash),
+    Set(Set),
 }
 
 impl fmt::Display for Object {
@@ -42,6 +43,7 @@ impl fmt::Display for Object {
             Object::Builtin(b) => b.fmt(f),
             Object::Array(a) => a.fmt(f),
             Object::Hash(h) => h.fmt(f),
+            Object::Set(s) => s.fmt(f),
         }
     }
 }
@@ -343,6 +345,25 @@ impl fmt::Display for Hash {
         // Sort for deterministic output.
         pairs.sort();
         write!(f, "{{{}}}", pairs.join(", "))
+    }
+}
+
+/// The object representation of a Monkey set.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Set {
+    pub set: HashSet<Hashable>,
+}
+
+impl fmt::Display for Set {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut items = vec![];
+        for e in &self.set {
+            items.push(format!("{}", e));
+        }
+
+        // Sort for deterministic output.
+        items.sort();
+        write!(f, "set{{{}}}", items.join(", "))
     }
 }
 

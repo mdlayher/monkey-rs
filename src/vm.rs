@@ -4,7 +4,7 @@
 extern crate byteorder;
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     convert::TryFrom,
     error, fmt,
     io::{self, Seek},
@@ -239,9 +239,15 @@ impl<'a> Vm<'a> {
                     ))
                 }
             }
-            // Composite literal operations.
-            (Object::Array(_), _) | (Object::Hash(_), _) => {
-                // Only indexing is supported on composite literals.
+            // Set operations.
+            (Object::Set(l), Object::Set(r)) => {
+                let obj = Self::binary_set_op(op, args, l, r)?;
+                self.push(obj);
+                Ok(())
+            }
+            // Composite literal indexing operations.
+            (Object::Array(_), _) | (Object::Hash(_), _) | (Object::Set(_), _) => {
+                // Only indexing is supported on these composite literals.
                 if op == BinaryOpcode::Index {
                     let out = Self::composite_index_op(args)?;
                     self.push(out);
@@ -278,6 +284,19 @@ impl<'a> Vm<'a> {
                 elements: args.to_vec(),
             }),
             CompositeOpcode::Hash => Self::build_hash(args)?,
+            CompositeOpcode::Set => {
+                let mut set = HashSet::new();
+
+                for a in args {
+                    // Only accept object::Hashable objects as keys.
+                    let arg = object::Hashable::try_from(a)
+                        .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+                    set.insert(arg);
+                }
+
+                Object::Set(object::Set { set })
+            }
         };
 
         self.push(out);
@@ -373,7 +392,42 @@ impl<'a> Vm<'a> {
         Ok(Object::Hash(object::Hash { pairs }))
     }
 
-    /// Executes a binary float operation.
+    /// Executes a binary set operation.
+    fn binary_set_op(
+        op: BinaryOpcode,
+        args: &[Object],
+        l: &object::Set,
+        r: &object::Set,
+    ) -> Result<Object> {
+        // Check for subset.
+        if op == BinaryOpcode::GreaterThan {
+            return Ok(if r.set.is_subset(&l.set) {
+                object::TRUE
+            } else {
+                object::FALSE
+            });
+        }
+
+        // TODO(mdlayher): work out the operator situation here, but this
+        // is good enough for now.
+        let set: HashSet<_> = match op {
+            BinaryOpcode::Add => l.set.union(&r.set).cloned().collect(),
+            BinaryOpcode::Sub => l.set.difference(&r.set).cloned().collect(),
+            BinaryOpcode::Mul => l.set.intersection(&r.set).cloned().collect(),
+            BinaryOpcode::Div => l.set.symmetric_difference(&r.set).cloned().collect(),
+            _ => {
+                return Err(Error::bad_arguments(
+                    BadArgumentKind::BinaryOperatorUnsupported,
+                    Opcode::Binary(op),
+                    args,
+                ));
+            }
+        };
+
+        Ok(Object::Set(object::Set { set }))
+    }
+
+    /// Executes a composite indexing operation.
     fn composite_index_op(args: &[Object]) -> Result<Object> {
         assert_eq!(
             args.len(),
@@ -401,6 +455,18 @@ impl<'a> Vm<'a> {
                     Ok(v.clone())
                 } else {
                     Ok(Object::Null)
+                }
+            }
+            // Set with some type of index.
+            (object::Object::Set(s), k) => {
+                let k = object::Hashable::try_from(k)
+                    .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+                // Does the element exist in the set?
+                if s.set.contains(&k) {
+                    Ok(object::TRUE)
+                } else {
+                    Ok(object::FALSE)
                 }
             }
             _ => Err(Error::bad_arguments(

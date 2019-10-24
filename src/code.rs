@@ -55,6 +55,7 @@ pub enum BinaryOpcode {
 pub enum CompositeOpcode {
     Array = 0x30,
     Hash = 0x31,
+    Set = 0x32,
 }
 
 impl fmt::Display for Opcode {
@@ -174,6 +175,7 @@ impl fmt::Display for CompositeOpcode {
         match self {
             Self::Array => write!(f, "[]"),
             Self::Hash => write!(f, "{{}}"),
+            Self::Set => write!(f, "set{{}}"),
         }
     }
 }
@@ -184,6 +186,7 @@ impl From<u8> for CompositeOpcode {
         match v {
             0x30 => CompositeOpcode::Array,
             0x31 => CompositeOpcode::Hash,
+            0x32 => CompositeOpcode::Set,
             _ => panic!("unhandled u8 to CompositeOpcode conversion: {}", v),
         }
     }
@@ -395,6 +398,10 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             },
             CompositeOpcode::Hash => Definition {
                 name: "Hash",
+                operand_widths: vec![Width::Two],
+            },
+            CompositeOpcode::Set => Definition {
+                name: "Set",
                 operand_widths: vec![Width::Two],
             },
         },

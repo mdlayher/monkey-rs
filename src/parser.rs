@@ -3,7 +3,7 @@
 use crate::token::Token;
 use crate::{ast, lexer};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error;
 use std::fmt;
 use std::mem;
@@ -177,6 +177,7 @@ impl<'a> Parser<'a> {
             Token::LeftBrace => self.parse_hash_literal(),
             Token::If => self.parse_if_expression(),
             Token::Function => self.parse_function_literal(),
+            Token::Set => self.parse_set_literal(),
 
             // TODO(mdlayher): better error for this.
             _ => Err(Error::UnexpectedToken {
@@ -429,6 +430,26 @@ impl<'a> Parser<'a> {
         self.expect(Token::RightBrace)?;
 
         Ok(ast::Expression::Hash(ast::HashLiteral { pairs }))
+    }
+
+    /// Parses a set literal.
+    fn parse_set_literal(&mut self) -> Result<ast::Expression> {
+        let mut set = HashSet::new();
+        self.expect(Token::LeftBrace)?;
+
+        while self.peek != Token::RightBrace {
+            self.next_token()?;
+            let e = self.parse_expression(Precedence::Lowest)?;
+            set.insert(e);
+
+            // Any more items to parse?
+            if self.peek != Token::RightBrace {
+                self.expect(Token::Comma)?;
+            }
+        }
+
+        self.expect(Token::RightBrace)?;
+        Ok(ast::Expression::Set(ast::SetLiteral { set }))
     }
 
     /// Parses expressions until `end` is encountered.
