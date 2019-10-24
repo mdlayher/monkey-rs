@@ -202,17 +202,17 @@ impl<'a> Vm<'a> {
             // coerced into floats for operations, and all of these operations
             // will produce a float result.
             (Object::Float(l), Object::Float(r)) => {
-                let obj = Vm::binary_float_op(op, args, *l, *r)?;
+                let obj = Self::binary_float_op(op, args, *l, *r)?;
                 self.push(obj);
                 Ok(())
             }
             (Object::Integer(l), Object::Float(r)) => {
-                let obj = Vm::binary_float_op(op, args, *l as f64, *r)?;
+                let obj = Self::binary_float_op(op, args, *l as f64, *r)?;
                 self.push(obj);
                 Ok(())
             }
             (Object::Float(l), Object::Integer(r)) => {
-                let obj = Vm::binary_float_op(op, args, *l, *r as f64)?;
+                let obj = Self::binary_float_op(op, args, *l, *r as f64)?;
                 self.push(obj);
                 Ok(())
             }
@@ -254,7 +254,7 @@ impl<'a> Vm<'a> {
                 // Clone args off the stack for the output object.
                 elements: args.to_vec(),
             }),
-            CompositeOpcode::Hash => Vm::build_hash(args)?,
+            CompositeOpcode::Hash => Self::build_hash(args)?,
         };
 
         self.push(out);
