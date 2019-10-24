@@ -48,6 +48,7 @@ pub enum BinaryOpcode {
     Equal = 0x25,
     NotEqual = 0x26,
     GreaterThan = 0x27,
+    Index = 0x28,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -145,6 +146,7 @@ impl fmt::Display for BinaryOpcode {
             Self::Equal => write!(f, "=="),
             Self::NotEqual => write!(f, "!="),
             Self::GreaterThan => write!(f, ">"),
+            Self::Index => write!(f, "[]"),
         }
     }
 }
@@ -161,6 +163,7 @@ impl From<u8> for BinaryOpcode {
             0x25 => BinaryOpcode::Equal,
             0x26 => BinaryOpcode::NotEqual,
             0x27 => BinaryOpcode::GreaterThan,
+            0x28 => BinaryOpcode::Index,
             _ => panic!("unhandled u8 to BinaryOpcode conversion: {}", v),
         }
     }
@@ -378,6 +381,10 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             },
             BinaryOpcode::GreaterThan => Definition {
                 name: "GreaterThan",
+                operand_widths: vec![],
+            },
+            BinaryOpcode::Index => Definition {
+                name: "Index",
                 operand_widths: vec![],
             },
         },

@@ -175,6 +175,14 @@ impl<'a> Vm<'a> {
                     BinaryOpcode::Equal => Object::Boolean(l == r),
                     BinaryOpcode::NotEqual => Object::Boolean(l != r),
                     BinaryOpcode::GreaterThan => Object::Boolean(l > r),
+                    BinaryOpcode::Index => {
+                        // Indexing not supported on integers.
+                        return Err(Error::bad_arguments(
+                            BadArgumentKind::BinaryOperatorUnsupported,
+                            Opcode::Binary(op),
+                            args,
+                        ));
+                    }
                 };
 
                 self.push(out);
@@ -221,6 +229,21 @@ impl<'a> Vm<'a> {
                 // Only concatentation is supported on strings.
                 if op == BinaryOpcode::Add {
                     let out = Object::String(l.clone() + r);
+                    self.push(out);
+                    Ok(())
+                } else {
+                    Err(Error::bad_arguments(
+                        BadArgumentKind::BinaryOperatorUnsupported,
+                        Opcode::Binary(op),
+                        args,
+                    ))
+                }
+            }
+            // Composite literal operations.
+            (Object::Array(_), _) | (Object::Hash(_), _) => {
+                // Only indexing is supported on composite literals.
+                if op == BinaryOpcode::Index {
+                    let out = Self::composite_index_op(args)?;
                     self.push(out);
                     Ok(())
                 } else {
@@ -306,8 +329,8 @@ impl<'a> Vm<'a> {
             BinaryOpcode::Div => Object::Float(l / r),
             BinaryOpcode::Mod => Object::Float(l % r),
             BinaryOpcode::GreaterThan => Object::Boolean(l > r),
-            BinaryOpcode::Equal | BinaryOpcode::NotEqual => {
-                // == and != are not supported with float arguments.
+            BinaryOpcode::Equal | BinaryOpcode::NotEqual | BinaryOpcode::Index => {
+                // Operator not supported with float arguments.
                 return Err(Error::bad_arguments(
                     BadArgumentKind::BinaryOperatorUnsupported,
                     Opcode::Binary(op),
@@ -348,6 +371,44 @@ impl<'a> Vm<'a> {
         }
 
         Ok(Object::Hash(object::Hash { pairs }))
+    }
+
+    /// Executes a binary float operation.
+    fn composite_index_op(args: &[Object]) -> Result<Object> {
+        assert_eq!(
+            args.len(),
+            2,
+            "expected exactly 2 arguments for composite indexing operation"
+        );
+
+        match (&args[0], &args[1]) {
+            // Array with numeric index.
+            (Object::Array(a), Object::Integer(i)) => {
+                // Is the element in bounds? If not, return null.
+                if *i >= 0 && (*i as usize) < a.elements.len() {
+                    Ok(a.elements[*i as usize].clone())
+                } else {
+                    Ok(Object::Null)
+                }
+            }
+            // Hash with some type of index.
+            (object::Object::Hash(h), k) => {
+                let k = object::Hashable::try_from(k)
+                    .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+                // Does the element exist? If not, return null.
+                if let Some(v) = h.pairs.get(&k) {
+                    Ok(v.clone())
+                } else {
+                    Ok(Object::Null)
+                }
+            }
+            _ => Err(Error::bad_arguments(
+                BadArgumentKind::BinaryOperatorUnsupported,
+                Opcode::Binary(BinaryOpcode::Index),
+                args,
+            )),
+        }
     }
 }
 

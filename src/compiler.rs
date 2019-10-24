@@ -108,6 +108,14 @@ impl Compiler {
                     self.emit(Opcode::Control(ControlOpcode::GetGlobal), vec![index])?;
                 }
                 ast::Expression::If(i) => self.compile_if_expression(i)?,
+                ast::Expression::Index(i) => {
+                    // Compile left and index expressions and emit the index
+                    // opcode to be interpreted by the VM.
+                    self.compile(ast::Node::Expression(*i.left))?;
+                    self.compile(ast::Node::Expression(*i.index))?;
+
+                    self.emit(Opcode::Binary(BinaryOpcode::Index), vec![])?;
+                }
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(Object::Integer(i.value))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;

@@ -103,6 +103,14 @@ fn vm_run_ok() {
                 },
             }),
         ),
+        ("[1, 2, 3][1]", Object::Integer(2)),
+        ("[[1, 1, 1]][0][0]", Object::Integer(1)),
+        ("[][0]", Object::Null),
+        ("[1][-1]", Object::Null),
+        ("{1: 1, 2: 2}[1]", Object::Integer(1)),
+        ("{1: 1}[0]", Object::Null),
+        ("{}[true]", Object::Null),
+        ("{1: {true: 2}, 2: 2}[1][true]", Object::Integer(2)),
     ];
 
     for (input, want) in &tests {
@@ -123,6 +131,14 @@ fn vm_run_ok() {
 #[test]
 fn vm_runtime_errors() {
     let tests = vec![
+        (
+            "1[0]",
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Index),
+                args: vec![Object::Integer(1), Object::Integer(0)],
+            },
+        ),
         (
             "-true",
             ErrorKind::BadArguments {
@@ -173,6 +189,23 @@ fn vm_runtime_errors() {
         ),
         (
             "{0.00: false}",
+            ErrorKind::Object(object::Error::NotHashable(Object::Float(0.))),
+        ),
+        (
+            r#"[0]["hello"]"#,
+            ErrorKind::BadArguments {
+                kind: BadArgumentKind::BinaryOperatorUnsupported,
+                op: Opcode::Binary(BinaryOpcode::Index),
+                args: vec![
+                    Object::Array(object::Array {
+                        elements: vec![Object::Integer(0)],
+                    }),
+                    Object::String("hello".to_string()),
+                ],
+            },
+        ),
+        (
+            r#"{}[0.0]"#,
             ErrorKind::Object(object::Error::NotHashable(Object::Float(0.))),
         ),
     ];

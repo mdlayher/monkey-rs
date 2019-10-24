@@ -447,6 +447,40 @@ fn compiler_ok() {
                 Object::Integer(4),
             ],
         ),
+        (
+            "[][0]",
+            vec![
+                // array
+                CompositeOpcode::Array as u8,
+                0x00,
+                0x00,
+                // 0
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // index
+                BinaryOpcode::Index as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(0)],
+        ),
+        (
+            r#"{}["foo"]"#,
+            vec![
+                // hash
+                CompositeOpcode::Hash as u8,
+                0x00,
+                0x00,
+                // foo
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // index
+                BinaryOpcode::Index as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::String("foo".to_string())],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
