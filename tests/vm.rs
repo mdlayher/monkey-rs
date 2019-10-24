@@ -1,12 +1,14 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::vm::*;
+use std::collections::HashMap;
+
 use mdl_monkey::{
     ast,
     code::{BinaryOpcode, Opcode, UnaryOpcode},
     compiler, lexer,
-    object::{self, Object},
+    object::{self, Hashable, Object},
     parser,
+    vm::*,
 };
 
 #[test]
@@ -72,6 +74,33 @@ fn vm_run_ok() {
             r#"[1 + 2, "foo" + "bar"]"#,
             Object::Array(object::Array {
                 elements: vec![Object::Integer(3), Object::String("foobar".to_string())],
+            }),
+        ),
+        ("{}", Object::Hash(object::Hash::default())),
+        (
+            "{1: 2, 3: 4}",
+            Object::Hash(object::Hash {
+                pairs: {
+                    let mut m = HashMap::new();
+                    m.insert(Hashable::Integer(1), Object::Integer(2));
+                    m.insert(Hashable::Integer(3), Object::Integer(4));
+                    m
+                },
+            }),
+        ),
+        (
+            r#"{1 + 1: 2 * 2, true: false, "hello": "world"}"#,
+            Object::Hash(object::Hash {
+                pairs: {
+                    let mut m = HashMap::new();
+                    m.insert(Hashable::Integer(2), Object::Integer(4));
+                    m.insert(Hashable::Boolean(true), Object::Boolean(false));
+                    m.insert(
+                        Hashable::String("hello".to_string()),
+                        Object::String("world".to_string()),
+                    );
+                    m
+                },
             }),
         ),
     ];
@@ -141,6 +170,10 @@ fn vm_runtime_errors() {
                 op: Opcode::Binary(BinaryOpcode::NotEqual),
                 args: vec![Object::Float(1.1), Object::Float(1.1)],
             },
+        ),
+        (
+            "{0.00: false}",
+            ErrorKind::Object(object::Error::NotHashable(Object::Float(0.))),
         ),
     ];
 

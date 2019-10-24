@@ -4,6 +4,8 @@
 extern crate byteorder;
 
 use std::{
+    collections::HashMap,
+    convert::TryFrom,
     error, fmt,
     io::{self, Seek},
     result,
@@ -200,17 +202,17 @@ impl<'a> Vm<'a> {
             // coerced into floats for operations, and all of these operations
             // will produce a float result.
             (Object::Float(l), Object::Float(r)) => {
-                let obj = self.binary_float_op(op, args, *l, *r)?;
+                let obj = Vm::binary_float_op(op, args, *l, *r)?;
                 self.push(obj);
                 Ok(())
             }
             (Object::Integer(l), Object::Float(r)) => {
-                let obj = self.binary_float_op(op, args, *l as f64, *r)?;
+                let obj = Vm::binary_float_op(op, args, *l as f64, *r)?;
                 self.push(obj);
                 Ok(())
             }
             (Object::Float(l), Object::Integer(r)) => {
-                let obj = self.binary_float_op(op, args, *l, *r as f64)?;
+                let obj = Vm::binary_float_op(op, args, *l, *r as f64)?;
                 self.push(obj);
                 Ok(())
             }
@@ -242,47 +244,21 @@ impl<'a> Vm<'a> {
     fn composite_op(&mut self, ctx: &mut RunContext, op: CompositeOpcode) -> Result<()> {
         // Read the appropriate number of elements from the stack as indicated
         // by the composite opcode's operand.
-        let n = match op {
-            CompositeOpcode::Array => ctx.read_u16()?,
-            _ => unimplemented!(),
-        };
+        let n = ctx.read_u16()? as usize;
 
-        let (start, end) = self.pop_n(n as usize);
+        let (start, end) = self.pop_n(n);
         let args = &self.stack[start..end];
 
-        // Copy each argument into elements to return as an array object.
-        let mut elements = Vec::with_capacity(args.len());
-        for a in args {
-            // The stack owns these elements so we must clone them to add
-            // array elements.
-            elements.push(a.clone())
-        }
-
-        self.push(Object::Array(object::Array { elements }));
-        Ok(())
-    }
-
-    /// Executes a binary float operation.
-    // Does not take &mut self and push directly to stack to simplify borrowing.
-    fn binary_float_op(&self, op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result<Object> {
         let out = match op {
-            BinaryOpcode::Add => Object::Float(l + r),
-            BinaryOpcode::Sub => Object::Float(l - r),
-            BinaryOpcode::Mul => Object::Float(l * r),
-            BinaryOpcode::Div => Object::Float(l / r),
-            BinaryOpcode::Mod => Object::Float(l % r),
-            BinaryOpcode::GreaterThan => Object::Boolean(l > r),
-            BinaryOpcode::Equal | BinaryOpcode::NotEqual => {
-                // == and != are not supported with float arguments.
-                return Err(Error::bad_arguments(
-                    BadArgumentKind::BinaryOperatorUnsupported,
-                    Opcode::Binary(op),
-                    args,
-                ));
-            }
+            CompositeOpcode::Array => Object::Array(object::Array {
+                // Clone args off the stack for the output object.
+                elements: args.to_vec(),
+            }),
+            CompositeOpcode::Hash => Vm::build_hash(args)?,
         };
 
-        Ok(out)
+        self.push(out);
+        Ok(())
     }
 
     /// Pushes an `Object` onto the stack, growing the stack if needed.
@@ -319,6 +295,59 @@ impl<'a> Vm<'a> {
         self.sp -= n;
 
         (start, end)
+    }
+
+    /// Executes a binary float operation.
+    fn binary_float_op(op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result<Object> {
+        let out = match op {
+            BinaryOpcode::Add => Object::Float(l + r),
+            BinaryOpcode::Sub => Object::Float(l - r),
+            BinaryOpcode::Mul => Object::Float(l * r),
+            BinaryOpcode::Div => Object::Float(l / r),
+            BinaryOpcode::Mod => Object::Float(l % r),
+            BinaryOpcode::GreaterThan => Object::Boolean(l > r),
+            BinaryOpcode::Equal | BinaryOpcode::NotEqual => {
+                // == and != are not supported with float arguments.
+                return Err(Error::bad_arguments(
+                    BadArgumentKind::BinaryOperatorUnsupported,
+                    Opcode::Binary(op),
+                    args,
+                ));
+            }
+        };
+
+        Ok(out)
+    }
+
+    /// Builds a Hash from stack objects.
+    fn build_hash(args: &[Object]) -> Result<Object> {
+        if args.is_empty() {
+            // No arguments, empty hash.
+            return Ok(Object::Hash(object::Hash::default()));
+        }
+
+        // The parser and compiler should make this assertion hold.
+        assert!(
+            args.len() % 2 == 0,
+            "hash must contain an even number of objects"
+        );
+
+        // Iterate two objects at a time for each key/value pair.
+        let mut pairs = HashMap::with_capacity(args.len() / 2);
+
+        let mut i = 0;
+        while i < args.len() {
+            // Only accept object::Hashable objects as keys.
+            let k = object::Hashable::try_from(&args[i])
+                .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+            let v = args[i + 1].clone();
+            i += 2;
+
+            pairs.insert(k, v);
+        }
+
+        Ok(Object::Hash(object::Hash { pairs }))
     }
 }
 
@@ -423,6 +452,7 @@ pub enum ErrorKind {
         op: Opcode,
         args: Vec<Object>,
     },
+    Object(object::Error),
 }
 
 /// Describes a particular type of bad arguments error.
@@ -447,6 +477,7 @@ impl fmt::Display for ErrorKind {
                     op, args[0], op, args[1],
                 ),
             },
+            ErrorKind::Object(err) => write!(f, "object error: {}", err),
         }
     }
 }

@@ -4,6 +4,7 @@
 use crate::ast;
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::error;
 use std::fmt;
 use std::result;
@@ -312,6 +313,20 @@ impl fmt::Display for Hashable {
     }
 }
 
+impl TryFrom<&Object> for Hashable {
+    type Error = Error;
+
+    /// Attempt conversion from an Object to a Hashable enum.
+    fn try_from(obj: &Object) -> Result<Self> {
+        match obj {
+            Object::Integer(i) => Ok(Self::Integer(*i)),
+            Object::Boolean(b) => Ok(Self::Boolean(*b)),
+            Object::String(s) => Ok(Self::String(s.to_string())),
+            _ => Err(Error::NotHashable(obj.clone())),
+        }
+    }
+}
+
 /// The object representation of a Monkey hash.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Hash {
@@ -338,12 +353,14 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Debug, PartialEq)]
 pub enum Error {
     Builtin(Builtin, String),
+    NotHashable(Object),
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::Builtin(b, err) => write!(f, "built-in {}: {}", b, err),
+            Error::NotHashable(obj) => write!(f, "object {:?} cannot be a hash key", obj),
         }
     }
 }
