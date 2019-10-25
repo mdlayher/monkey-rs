@@ -7,17 +7,22 @@ use std::{error, fmt, mem, result};
 use crate::{
     ast,
     code::{self, BinaryOpcode, CompositeOpcode, ControlOpcode, Opcode, UnaryOpcode},
-    object::Object,
+    object::{self, Object},
     token::Token,
 };
 
 #[derive(Default)]
 pub struct Compiler {
-    instructions: Vec<u8>,
     constants: Vec<Object>,
+    symbols: SymbolTable,
+    scopes: Vec<CompilationScope>,
+}
+
+#[derive(Default)]
+struct CompilationScope {
+    instructions: Vec<u8>,
     last: Option<Emitted>,
     previous: Option<Emitted>,
-    symbols: SymbolTable,
 }
 
 #[derive(Debug)]
@@ -28,7 +33,10 @@ struct Emitted {
 
 impl Compiler {
     pub fn new() -> Self {
-        Compiler::default()
+        // Initialize and enter the "main" scope.
+        let mut c = Compiler::default();
+        c.enter_scope();
+        c
     }
 
     pub fn compile(&mut self, node: ast::Node) -> Result<()> {
@@ -64,6 +72,20 @@ impl Compiler {
                 }
                 ast::Expression::Float(f) => {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
+                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                }
+                ast::Expression::Function(f) => {
+                    // Enter a new scope and compile the body of the function.
+                    // Once we leave the scope, place the function's instructions
+                    // as a compiled function constant to be executed at a
+                    // later time.
+                    self.enter_scope();
+                    self.compile(ast::Node::Statement(ast::Statement::Block(f.body)))?;
+                    let instructions = self.leave_scope();
+
+                    let oper = vec![self.add_constant(Object::CompiledFunction(
+                        object::CompiledFunction { instructions },
+                    ))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
                 ast::Expression::Hash(h) => {
@@ -176,7 +198,10 @@ impl Compiler {
                     let idx = self.symbols.define(l.name);
                     self.emit(Opcode::Control(ControlOpcode::SetGlobal), vec![idx])?;
                 }
-                _ => panic!("unhandled statement type"),
+                ast::Statement::Return(r) => {
+                    self.compile(ast::Node::Expression(r.value))?;
+                    self.emit(Opcode::Control(ControlOpcode::ReturnValue), vec![])?;
+                }
             },
         };
 
@@ -185,7 +210,7 @@ impl Compiler {
 
     pub fn bytecode(&self) -> Bytecode {
         Bytecode {
-            instructions: self.instructions.clone(),
+            instructions: self.scope().instructions.clone(),
             constants: self.constants.clone(),
         }
     }
@@ -238,7 +263,7 @@ impl Compiler {
         let jump_pos = self.emit(Opcode::Control(ControlOpcode::Jump), vec![9999])?;
 
         // Rewrite the jump with the correct instruction pointer.
-        self.change_operand(jump_not_true_pos, self.instructions.len())?;
+        self.change_operand(jump_not_true_pos, self.scope().instructions.len())?;
 
         if let Some(a) = e.alternative {
             // We have an alternative, compile it.
@@ -249,7 +274,7 @@ impl Compiler {
             self.emit(Opcode::Control(ControlOpcode::Null), vec![])?;
         }
 
-        self.change_operand(jump_pos, self.instructions.len())?;
+        self.change_operand(jump_pos, self.scope().instructions.len())?;
 
         Ok(())
     }
@@ -271,8 +296,9 @@ impl Compiler {
     }
 
     fn add_instruction(&mut self, ins: &[u8]) -> usize {
-        let pos = self.instructions.len();
-        self.instructions.extend(ins);
+        let scope = self.scope_mut();
+        let pos = scope.instructions.len();
+        scope.instructions.extend(ins);
         pos
     }
 
@@ -280,12 +306,14 @@ impl Compiler {
         let last = Some(Emitted { op, pos });
 
         // Store value of last into previous and then overwrite last.
-        mem::swap(&mut self.last, &mut self.previous);
-        self.last = last;
+        let scope = self.scope_mut();
+        mem::swap(&mut scope.last, &mut scope.previous);
+        scope.last = last;
     }
 
     fn try_remove_last(&mut self, op: Opcode) -> bool {
-        match &self.last {
+        let scope = self.scope_mut();
+        match &scope.last {
             None => return false,
             Some(l) => {
                 if l.op != op {
@@ -295,16 +323,16 @@ impl Compiler {
         }
 
         // Trim the last instruction from the instructions stream.
-        let end = (&self.last).as_ref().expect("last must not be none").pos;
-        self.instructions = self.instructions.drain(..end).collect();
+        let end = scope.last.as_ref().expect("last must not be none").pos;
+        scope.instructions = scope.instructions.drain(..end).collect();
 
         // Store value of previous into last.
-        mem::swap(&mut self.last, &mut self.previous);
+        mem::swap(&mut scope.last, &mut scope.previous);
         true
     }
 
     fn change_operand(&mut self, op_pos: usize, operand: usize) -> Result<()> {
-        let op = Opcode::from(self.instructions[op_pos]);
+        let op = Opcode::from(self.scope().instructions[op_pos]);
         let ins = code::make(op, &[operand]).map_err(Error::Code)?;
 
         self.replace_instruction(op_pos, &ins);
@@ -312,9 +340,32 @@ impl Compiler {
     }
 
     fn replace_instruction(&mut self, pos: usize, ins: &[u8]) {
+        let scope = self.scope_mut();
         for (i, b) in ins.iter().enumerate() {
-            self.instructions[pos + i] = *b
+            scope.instructions[pos + i] = *b
         }
+    }
+
+    fn scope(&self) -> &CompilationScope {
+        &self.scopes[self.scopes.len() - 1]
+    }
+
+    fn scope_mut(&mut self) -> &mut CompilationScope {
+        let l = self.scopes.len() - 1;
+        &mut self.scopes[l]
+    }
+
+    fn enter_scope(&mut self) {
+        self.scopes.push(CompilationScope::default());
+    }
+
+    fn leave_scope(&mut self) -> Vec<u8> {
+        let scope = self
+            .scopes
+            .pop()
+            .expect("left scope without entering one previously");
+
+        scope.instructions
     }
 }
 

@@ -28,6 +28,7 @@ pub enum Object {
     Array(Array),
     Hash(Hash),
     Set(Set),
+    CompiledFunction(CompiledFunction),
 }
 
 impl fmt::Display for Object {
@@ -44,6 +45,7 @@ impl fmt::Display for Object {
             Object::Array(a) => a.fmt(f),
             Object::Hash(h) => h.fmt(f),
             Object::Set(s) => s.fmt(f),
+            Object::CompiledFunction(func) => func.fmt(f),
         }
     }
 }
@@ -364,6 +366,18 @@ impl fmt::Display for Set {
         // Sort for deterministic output.
         items.sort();
         write!(f, "set{{{}}}", items.join(", "))
+    }
+}
+
+/// The object representation of a compiled Monkey function.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CompiledFunction {
+    pub instructions: Vec<u8>,
+}
+
+impl fmt::Display for CompiledFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "compiled_fn({:?})", self.instructions)
     }
 }
 

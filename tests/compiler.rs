@@ -1,6 +1,13 @@
 extern crate mdl_monkey;
 
-use mdl_monkey::{ast, code::*, compiler::*, lexer, object::Object, parser};
+use mdl_monkey::{
+    ast,
+    code::*,
+    compiler::*,
+    lexer,
+    object::{self, Object},
+    parser,
+};
 
 #[test]
 fn compiler_ok() {
@@ -515,6 +522,35 @@ fn compiler_ok() {
                 ControlOpcode::Pop as u8,
             ],
             vec![Object::Integer(0)],
+        ),
+        (
+            "fn() { return 5 + 10 }",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(5),
+                Object::Integer(10),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 5
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        // 10
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x01,
+                        // add, return
+                        BinaryOpcode::Add as u8,
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
         ),
     ];
 

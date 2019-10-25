@@ -30,6 +30,9 @@ pub enum ControlOpcode {
     Null = 0x06,
     GetGlobal = 0x07,
     SetGlobal = 0x08,
+    Call = 0x09,
+    ReturnValue = 0x0a,
+    Return = 0x0b,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -94,6 +97,9 @@ impl fmt::Display for ControlOpcode {
             Self::Null => write!(f, "NULL"),
             Self::GetGlobal => write!(f, "GET GLOBAL"),
             Self::SetGlobal => write!(f, "SET GLOBAL"),
+            Self::Call => write!(f, "CALL"),
+            Self::ReturnValue => write!(f, "RETURN VALUE"),
+            Self::Return => write!(f, "RETURN"),
         }
     }
 }
@@ -111,6 +117,9 @@ impl From<u8> for ControlOpcode {
             0x06 => ControlOpcode::Null,
             0x07 => ControlOpcode::GetGlobal,
             0x08 => ControlOpcode::SetGlobal,
+            0x09 => ControlOpcode::Call,
+            0x0a => ControlOpcode::ReturnValue,
+            0x0b => ControlOpcode::Return,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -341,6 +350,18 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             ControlOpcode::SetGlobal => Definition {
                 name: "SetGlobal",
                 operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::Call => Definition {
+                name: "Call",
+                operand_widths: vec![],
+            },
+            ControlOpcode::ReturnValue => Definition {
+                name: "ReturnValue",
+                operand_widths: vec![],
+            },
+            ControlOpcode::Return => Definition {
+                name: "Return",
+                operand_widths: vec![],
             },
         },
         Opcode::Unary(u) => match u {

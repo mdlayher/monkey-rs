@@ -124,6 +124,7 @@ impl<'a> Vm<'a> {
                 let idx = ctx.read_u16()?;
                 self.globals[idx as usize] = self.stack[start].clone();
             }
+            ControlOpcode::Call | ControlOpcode::ReturnValue | ControlOpcode::Return => unimplemented!(),
         };
 
         Ok(())
