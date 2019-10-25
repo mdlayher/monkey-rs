@@ -5,7 +5,7 @@ use std::fmt;
 
 /// The types of tokens recognized by a `Lexer`, along with their associated
 /// data if applicable.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Token {
     // Control tokens.
     Illegal(char),
@@ -98,14 +98,14 @@ impl fmt::Display for Token {
 }
 
 /// An integer value and its associated radix.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Integer {
     pub radix: Radix,
     pub value: i64,
 }
 
 /// The radix or base of an `Integer`.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Radix {
     Binary,
     Decimal,
@@ -125,7 +125,7 @@ impl fmt::Display for Integer {
 }
 
 /// A `f64` value stored as raw bits.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Float(pub u64);
 
 impl fmt::Display for Float {

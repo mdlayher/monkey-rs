@@ -89,25 +89,9 @@ impl Compiler {
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
                 ast::Expression::Hash(h) => {
-                    // This is wasteful and silly, but it's easier to temporarily
-                    // collect the keys into a vector and sort the output than
-                    // it is to retrofit all HashMap uses with BTreeMap.
-                    //
-                    // TODO(mdlayher): clean this up.
-                    let mut keys = Vec::with_capacity(h.pairs.len());
-                    for k in h.pairs.keys() {
-                        keys.push(k);
-                    }
-
-                    // Sort each item by comparing their lexical string order.
-                    keys.sort_by(|a, b| format!("{}", a).partial_cmp(&format!("{}", b)).unwrap());
-
                     // Compile each key/value pair in order.
-                    for k in keys {
-                        // TODO(mdlayher): remove cloning?
+                    for (k, v) in &h.pairs {
                         self.compile(ast::Node::Expression(k.clone()))?;
-
-                        let v = h.pairs.get(k).expect("value must exist");
                         self.compile(ast::Node::Expression(v.clone()))?;
                     }
 
@@ -155,21 +139,7 @@ impl Compiler {
                     self.emit(Opcode::Unary(op), vec![])?;
                 }
                 ast::Expression::Set(s) => {
-                    // This is wasteful and silly, but it's easier to temporarily
-                    // collect the keys into a vector and sort the output than
-                    // it is to retrofit all HashMap uses with BTreeMap.
-                    //
-                    // TODO(mdlayher): clean this up.
-                    let mut items = Vec::with_capacity(s.set.len());
-                    for s in &s.set {
-                        items.push(s);
-                    }
-
-                    // Sort each item by comparing their lexical string order.
-                    items.sort_by(|a, b| format!("{}", a).partial_cmp(&format!("{}", b)).unwrap());
-
-                    // Compile each item in order.
-                    for i in items {
+                    for i in &s.set {
                         self.compile(ast::Node::Expression(i.clone()))?;
                     }
 

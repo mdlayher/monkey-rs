@@ -1,13 +1,8 @@
 //! A parser for the Monkey programming language from <https://interpreterbook.com/>.
 
-use crate::token::Token;
-use crate::{ast, lexer};
+use crate::{ast, lexer, token::Token};
 
-use std::collections::{HashMap, HashSet};
-use std::error;
-use std::fmt;
-use std::mem;
-use std::result;
+use std::{error, fmt, mem, result};
 
 /// Consumes input from a `lexer::Lexer` and produces an `ast::Program` for the
 /// Monkey programming language.
@@ -408,8 +403,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a hash literal.
     fn parse_hash_literal(&mut self) -> Result<ast::Expression> {
-        let mut pairs = HashMap::new();
-
+        let mut pairs = vec![];
         while self.peek != Token::RightBrace {
             self.next_token()?;
 
@@ -419,7 +413,9 @@ impl<'a> Parser<'a> {
 
             let value = self.parse_expression(Precedence::Lowest)?;
 
-            pairs.insert(key, value);
+            // It's possible for duplicate keys to be parsed. This is handled
+            // as a runtime error.
+            pairs.push((key, value));
 
             // Any more items to parse?
             if self.peek != Token::RightBrace {
@@ -434,13 +430,15 @@ impl<'a> Parser<'a> {
 
     /// Parses a set literal.
     fn parse_set_literal(&mut self) -> Result<ast::Expression> {
-        let mut set = HashSet::new();
+        let mut set = vec![];
         self.expect(Token::LeftBrace)?;
 
         while self.peek != Token::RightBrace {
             self.next_token()?;
-            let e = self.parse_expression(Precedence::Lowest)?;
-            set.insert(e);
+
+            // It's possible for duplicate elements to be parsed. This is
+            // handled as a runtime error.
+            set.push(self.parse_expression(Precedence::Lowest)?);
 
             // Any more items to parse?
             if self.peek != Token::RightBrace {

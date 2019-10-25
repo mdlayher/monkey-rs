@@ -5,7 +5,7 @@ use crate::ast;
 use crate::object::{self, Object};
 use crate::token::Token;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::error;
 use std::fmt;
 use std::result;
@@ -114,7 +114,7 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                 )),
             },
             ast::Expression::Hash(h) => {
-                let mut pairs = HashMap::new();
+                let mut pairs = BTreeMap::new();
 
                 for (k, v) in h.pairs {
                     let key = match eval(ast::Node::Expression(k), env)? {

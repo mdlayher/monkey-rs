@@ -489,7 +489,7 @@ fn compiler_ok() {
             vec![Object::String("foo".to_string())],
         ),
         (
-            "set{0, 0, 1}",
+            "set{0, 1}",
             vec![
                 // 0
                 ControlOpcode::Constant as u8,

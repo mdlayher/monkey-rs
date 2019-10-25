@@ -2,7 +2,7 @@ extern crate mdl_monkey;
 
 use mdl_monkey::{ast, evaluator, lexer, object, parser};
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[test]
 fn evaluate_integer_expression() {
@@ -570,7 +570,7 @@ fn evaluate_index_objects_errors() {
 
 #[test]
 fn evaluate_hash_objects() {
-    let mut pairs = HashMap::new();
+    let mut pairs = BTreeMap::new();
     pairs.insert(
         object::Hashable::String("one".to_string()),
         object::Object::Integer(1),

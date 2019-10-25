@@ -1,6 +1,6 @@
 extern crate mdl_monkey;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use mdl_monkey::{
     ast,
@@ -81,7 +81,7 @@ fn vm_run_ok() {
             "{1: 2, 3: 4}",
             Object::Hash(object::Hash {
                 pairs: {
-                    let mut m = HashMap::new();
+                    let mut m = BTreeMap::new();
                     m.insert(Hashable::Integer(1), Object::Integer(2));
                     m.insert(Hashable::Integer(3), Object::Integer(4));
                     m
@@ -92,7 +92,7 @@ fn vm_run_ok() {
             r#"{1 + 1: 2 * 2, true: false, "hello": "world"}"#,
             Object::Hash(object::Hash {
                 pairs: {
-                    let mut m = HashMap::new();
+                    let mut m = BTreeMap::new();
                     m.insert(Hashable::Integer(2), Object::Integer(4));
                     m.insert(Hashable::Boolean(true), Object::Boolean(false));
                     m.insert(
@@ -113,10 +113,10 @@ fn vm_run_ok() {
         ("{1: {true: 2}, 2: 2}[1][true]", Object::Integer(2)),
         ("set{}", Object::Set(object::Set::default())),
         (
-            "set{0, 0, 1}",
+            "set{0, 1}",
             Object::Set(object::Set {
                 set: {
-                    let mut s = HashSet::new();
+                    let mut s = BTreeSet::new();
                     s.insert(Hashable::Integer(0));
                     s.insert(Hashable::Integer(1));
                     s
@@ -131,7 +131,7 @@ fn vm_run_ok() {
             "set{0} + set{1}",
             Object::Set(object::Set {
                 set: {
-                    let mut s = HashSet::new();
+                    let mut s = BTreeSet::new();
                     s.insert(Hashable::Integer(0));
                     s.insert(Hashable::Integer(1));
                     s
@@ -142,7 +142,7 @@ fn vm_run_ok() {
             "set{1, 0} - set{1}",
             Object::Set(object::Set {
                 set: {
-                    let mut s = HashSet::new();
+                    let mut s = BTreeSet::new();
                     s.insert(Hashable::Integer(0));
                     s
                 },
@@ -152,7 +152,7 @@ fn vm_run_ok() {
             "set{1, 0} * set{1}",
             Object::Set(object::Set {
                 set: {
-                    let mut s = HashSet::new();
+                    let mut s = BTreeSet::new();
                     s.insert(Hashable::Integer(1));
                     s
                 },
@@ -162,7 +162,7 @@ fn vm_run_ok() {
             "set{1, 0} / set{1, 2}",
             Object::Set(object::Set {
                 set: {
-                    let mut s = HashSet::new();
+                    let mut s = BTreeSet::new();
                     s.insert(Hashable::Integer(0));
                     s.insert(Hashable::Integer(2));
                     s

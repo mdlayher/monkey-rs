@@ -2,11 +2,9 @@
 //! <https://interpreterbook.com/>.
 
 use crate::token;
-use std::hash::Hash;
-use std::hash::Hasher;
 
-use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::hash::Hash;
 
 /// Any AST node in a Monkey program.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -51,7 +49,7 @@ impl fmt::Display for Program {
 }
 
 /// Possible statement types in Monkey.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Statement {
     Expression(Expression),
     Let(LetStatement),
@@ -71,7 +69,7 @@ impl fmt::Display for Statement {
 }
 
 /// A statement that binds an expression to an identifier.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct LetStatement {
     pub name: String,
     pub value: Expression,
@@ -84,7 +82,7 @@ impl fmt::Display for LetStatement {
 }
 
 /// A statement that returns a value.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ReturnStatement {
     pub value: Expression,
 }
@@ -96,7 +94,7 @@ impl fmt::Display for ReturnStatement {
 }
 
 /// A statement produced by a block.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct BlockStatement {
     pub statements: Vec<Statement>,
 }
@@ -112,7 +110,7 @@ impl fmt::Display for BlockStatement {
 }
 
 /// A computed expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Expression {
     Identifier(String),
     Integer(token::Integer),
@@ -152,7 +150,7 @@ impl fmt::Display for Expression {
 }
 
 /// An array of objects.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ArrayLiteral {
     pub elements: Vec<Expression>,
 }
@@ -172,7 +170,7 @@ impl fmt::Display for ArrayLiteral {
 }
 
 /// A prefix expression such as negation or logical not.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PrefixExpression {
     pub operator: token::Token,
     pub right: Box<Expression>,
@@ -185,7 +183,7 @@ impl fmt::Display for PrefixExpression {
 }
 
 /// An infix expression such as a mathematical computation.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct InfixExpression {
     pub left: Box<Expression>,
     pub operator: token::Token,
@@ -199,7 +197,7 @@ impl fmt::Display for InfixExpression {
 }
 
 /// An expression comprised of an if/else block.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
     pub consequence: BlockStatement,
@@ -219,7 +217,7 @@ impl fmt::Display for IfExpression {
 }
 
 /// A function literal.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct FunctionLiteral {
     pub parameters: Vec<String>,
     pub body: BlockStatement,
@@ -232,7 +230,7 @@ impl fmt::Display for FunctionLiteral {
 }
 
 /// A function call expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CallExpression {
     pub function: Box<Expression>,
     pub arguments: Vec<Expression>,
@@ -250,7 +248,7 @@ impl fmt::Display for CallExpression {
 }
 
 /// An array index expression.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct IndexExpression {
     pub left: Box<Expression>,
     pub index: Box<Expression>,
@@ -263,57 +261,41 @@ impl fmt::Display for IndexExpression {
 }
 
 /// A hash literal expression.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HashLiteral {
-    pub pairs: HashMap<Expression, Expression>,
-}
-
-// This is a bit of a hack, but we need all Expressions to implement Hasher,
-// although we will never hash a HashLiteral itself.
-#[allow(clippy::derive_hash_xor_eq)]
-impl Hash for HashLiteral {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        panic!("HashLiteral cannot be hashed");
-    }
+    pub pairs: Vec<(Expression, Expression)>,
 }
 
 impl fmt::Display for HashLiteral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut pairs = vec![];
-        for pair in &self.pairs {
-            pairs.push(format!(r#"{}: {}"#, pair.0, pair.1));
-        }
-
-        // Sort for deterministic output.
-        pairs.sort();
-        write!(f, "{{{}}}", pairs.join(", "))
+        write!(
+            f,
+            "{{{}}}",
+            self.pairs
+                .iter()
+                .map(|(k, v)| format!(r#"{}: {}"#, k, v))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }
 
 /// A set literal expression.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SetLiteral {
-    pub set: HashSet<Expression>,
-}
-
-// This is a bit of a hack, but we need all Expressions to implement Hasher,
-// although we will never hash a SetLiteral itself.
-#[allow(clippy::derive_hash_xor_eq)]
-impl Hash for SetLiteral {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-        panic!("SetLiteral cannot be hashed");
-    }
+    pub set: Vec<Expression>,
 }
 
 impl fmt::Display for SetLiteral {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut items = vec![];
-        for e in &self.set {
-            items.push(format!("{}", e));
-        }
-
-        // Sort for deterministic output.
-        items.sort();
-        write!(f, "set{{{}}}", items.join(", "))
+        write!(
+            f,
+            "set{{{}}}",
+            self.set
+                .iter()
+                .map(|s| format!("{}", s))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
     }
 }

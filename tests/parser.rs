@@ -283,13 +283,15 @@ fn parse_hash_expressions() {
     let tests = vec![
         (
             r#"{"one": 1, "two": 2, "three": 3}"#,
-            r#"{"one": 1, "three": 3, "two": 2}"#,
+            r#"{"one": 1, "two": 2, "three": 3}"#,
         ),
         (
             r#"{"one": 0 + 1, "two": 10 - 8, "three": 15 / 5}"#,
-            r#"{"one": (0 + 1), "three": (15 / 5), "two": (10 - 8)}"#,
+            r#"{"one": (0 + 1), "two": (10 - 8), "three": (15 / 5)}"#,
         ),
         ("{}", "{}"),
+        // Duplicate keys permitted by the parser.
+        ("{1: 1, 1: 1}", "{1: 1, 1: 1}"),
     ];
 
     for (input, want) in tests {
@@ -302,9 +304,10 @@ fn parse_hash_expressions() {
 #[test]
 fn parse_set_expressions() {
     let tests = vec![
-        (r#"set{1, "foo", true}"#, r#"set{"foo", 1, true}"#),
+        (r#"set{1, "foo", true}"#, r#"set{1, "foo", true}"#),
         ("set{1}", "set{1}"),
-        ("set{1, 1, 1, 2}", "set{1, 2}"),
+        // Duplicate elements permitted by the parser.
+        ("set{1, 1, 1, 2}", "set{1, 1, 1, 2}"),
     ];
 
     for (input, want) in tests {

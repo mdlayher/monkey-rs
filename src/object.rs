@@ -3,7 +3,7 @@
 
 use crate::ast;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryFrom;
 use std::error;
 use std::fmt;
@@ -300,10 +300,10 @@ impl fmt::Display for Array {
 }
 
 /// Objects which may be used as `Hash` keys.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Hashable {
-    Integer(i64),
     Boolean(bool),
+    Integer(i64),
     String(String),
 }
 
@@ -334,7 +334,7 @@ impl TryFrom<&Object> for Hashable {
 /// The object representation of a Monkey hash.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Hash {
-    pub pairs: HashMap<Hashable, Object>,
+    pub pairs: BTreeMap<Hashable, Object>,
 }
 
 impl fmt::Display for Hash {
@@ -353,7 +353,7 @@ impl fmt::Display for Hash {
 /// The object representation of a Monkey set.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Set {
-    pub set: HashSet<Hashable>,
+    pub set: BTreeSet<Hashable>,
 }
 
 impl fmt::Display for Set {
@@ -363,8 +363,6 @@ impl fmt::Display for Set {
             items.push(format!("{}", e));
         }
 
-        // Sort for deterministic output.
-        items.sort();
         write!(f, "set{{{}}}", items.join(", "))
     }
 }

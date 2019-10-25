@@ -4,7 +4,7 @@
 extern crate byteorder;
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     error, fmt,
     io::{self, Seek},
@@ -286,13 +286,17 @@ impl<'a> Vm<'a> {
             }),
             CompositeOpcode::Hash => Self::build_hash(args)?,
             CompositeOpcode::Set => {
-                let mut set = HashSet::new();
+                let mut set = BTreeSet::new();
 
                 for a in args {
                     // Only accept object::Hashable objects as keys.
                     let arg = object::Hashable::try_from(a)
                         .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
 
+                    // Do not allow duplicate keys in the set.
+                    if set.contains(&arg) {
+                        return Err(Error::Runtime(ErrorKind::DuplicateKey(arg)));
+                    }
                     set.insert(arg);
                 }
 
@@ -376,13 +380,18 @@ impl<'a> Vm<'a> {
         );
 
         // Iterate two objects at a time for each key/value pair.
-        let mut pairs = HashMap::with_capacity(args.len() / 2);
+        let mut pairs = BTreeMap::new();
 
         let mut i = 0;
         while i < args.len() {
             // Only accept object::Hashable objects as keys.
             let k = object::Hashable::try_from(&args[i])
                 .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+            // Do not allow duplicate hash keys.
+            if pairs.get(&k).is_some() {
+                return Err(Error::Runtime(ErrorKind::DuplicateKey(k)));
+            }
 
             let v = args[i + 1].clone();
             i += 2;
@@ -411,7 +420,7 @@ impl<'a> Vm<'a> {
 
         // TODO(mdlayher): work out the operator situation here, but this
         // is good enough for now.
-        let set: HashSet<_> = match op {
+        let set: BTreeSet<_> = match op {
             BinaryOpcode::Add => l.set.union(&r.set).cloned().collect(),
             BinaryOpcode::Sub => l.set.difference(&r.set).cloned().collect(),
             BinaryOpcode::Mul => l.set.intersection(&r.set).cloned().collect(),
@@ -580,6 +589,7 @@ pub enum ErrorKind {
         op: Opcode,
         args: Vec<Object>,
     },
+    DuplicateKey(object::Hashable),
     Object(object::Error),
 }
 
@@ -605,6 +615,7 @@ impl fmt::Display for ErrorKind {
                     op, args[0], op, args[1],
                 ),
             },
+            ErrorKind::DuplicateKey(k) => write!(f, "duplicate key {} in data structure", k),
             ErrorKind::Object(err) => write!(f, "object error: {}", err),
         }
     }
