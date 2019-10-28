@@ -6,7 +6,7 @@ use std::{error, fmt, mem, result};
 
 use crate::{
     ast,
-    code::{self, BinaryOpcode, CompositeOpcode, ControlOpcode, Opcode, UnaryOpcode},
+    code::{self, BinaryOpcode::*, CompositeOpcode::*, ControlOpcode::*, Opcode, UnaryOpcode::*},
     object::{self, Object},
     token::Token,
 };
@@ -56,27 +56,20 @@ impl Compiler {
                         self.compile(ast::Node::Expression(e.clone()))?;
                     }
 
-                    self.emit(
-                        Opcode::Composite(CompositeOpcode::Array),
-                        vec![a.elements.len()],
-                    )?;
+                    self.emit(Opcode::Composite(Array), vec![a.elements.len()])?;
                 }
                 ast::Expression::Boolean(b) => {
-                    let op = if b {
-                        ControlOpcode::True
-                    } else {
-                        ControlOpcode::False
-                    };
+                    let op = if b { True } else { False };
 
                     self.emit(Opcode::Control(op), vec![])?;
                 }
                 ast::Expression::Call(c) => {
                     self.compile(ast::Node::Expression(*c.function))?;
-                    self.emit(Opcode::Control(ControlOpcode::Call), vec![])?;
+                    self.emit(Opcode::Control(Call), vec![])?;
                 }
                 ast::Expression::Float(f) => {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
-                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                    self.emit(Opcode::Control(Constant), oper)?;
                 }
                 ast::Expression::Function(f) => {
                     // Enter a new scope and compile the body of the function.
@@ -87,13 +80,13 @@ impl Compiler {
                     self.compile(ast::Node::Statement(ast::Statement::Block(f.body)))?;
 
                     // Allow the return value to be passed to the calling scope.
-                    if self.is_last(Opcode::Control(ControlOpcode::Pop)) {
+                    if self.is_last(Opcode::Control(Pop)) {
                         self.replace_last_with_return()?;
                     }
 
                     // If there was no return value, make an implicit return.
-                    if !self.is_last(Opcode::Control(ControlOpcode::ReturnValue)) {
-                        self.emit(Opcode::Control(ControlOpcode::Return), vec![])?;
+                    if !self.is_last(Opcode::Control(ReturnValue)) {
+                        self.emit(Opcode::Control(Return), vec![])?;
                     }
 
                     let instructions = self.leave_scope();
@@ -101,7 +94,7 @@ impl Compiler {
                     let oper = vec![self.add_constant(Object::CompiledFunction(
                         object::CompiledFunction { instructions },
                     ))];
-                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                    self.emit(Opcode::Control(Constant), oper)?;
                 }
                 ast::Expression::Hash(h) => {
                     // Compile each key/value pair in order.
@@ -111,7 +104,7 @@ impl Compiler {
                     }
 
                     self.emit(
-                        Opcode::Composite(CompositeOpcode::Hash),
+                        Opcode::Composite(Hash),
                         // Each pair is 2 elements.
                         vec![h.pairs.len() * 2],
                     )?;
@@ -126,7 +119,7 @@ impl Compiler {
 
                     // End the borrow of s by just taking the index we need.
                     let index = s.index;
-                    self.emit(Opcode::Control(ControlOpcode::GetGlobal), vec![index])?;
+                    self.emit(Opcode::Control(GetGlobal), vec![index])?;
                 }
                 ast::Expression::If(i) => self.compile_if_expression(i)?,
                 ast::Expression::Index(i) => {
@@ -135,19 +128,19 @@ impl Compiler {
                     self.compile(ast::Node::Expression(*i.left))?;
                     self.compile(ast::Node::Expression(*i.index))?;
 
-                    self.emit(Opcode::Binary(BinaryOpcode::Index), vec![])?;
+                    self.emit(Opcode::Binary(Index), vec![])?;
                 }
                 ast::Expression::Integer(i) => {
                     let oper = vec![self.add_constant(Object::Integer(i.value))];
-                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                    self.emit(Opcode::Control(Constant), oper)?;
                 }
                 ast::Expression::Infix(i) => self.compile_infix_expression(i)?,
                 ast::Expression::Prefix(p) => {
                     self.compile(ast::Node::Expression(*p.right))?;
 
                     let op = match p.operator {
-                        Token::Minus => UnaryOpcode::Negate,
-                        Token::Bang => UnaryOpcode::Not,
+                        Token::Minus => Negate,
+                        Token::Bang => Not,
                         _ => panic!("unhandled prefix operator: {:?}", p.operator),
                     };
 
@@ -158,17 +151,17 @@ impl Compiler {
                         self.compile(ast::Node::Expression(i.clone()))?;
                     }
 
-                    self.emit(Opcode::Composite(CompositeOpcode::Set), vec![s.set.len()])?;
+                    self.emit(Opcode::Composite(Set), vec![s.set.len()])?;
                 }
                 ast::Expression::String(s) => {
                     let oper = vec![self.add_constant(Object::String(s))];
-                    self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
+                    self.emit(Opcode::Control(Constant), oper)?;
                 }
             },
             ast::Node::Statement(s) => match s {
                 ast::Statement::Expression(e) => {
                     self.compile(ast::Node::Expression(e))?;
-                    self.emit(Opcode::Control(ControlOpcode::Pop), vec![])?;
+                    self.emit(Opcode::Control(Pop), vec![])?;
                 }
                 ast::Statement::Block(b) => {
                     for s in b.statements {
@@ -180,11 +173,11 @@ impl Compiler {
 
                     // Define this identifier with an index.
                     let idx = self.symbols.define(l.name);
-                    self.emit(Opcode::Control(ControlOpcode::SetGlobal), vec![idx])?;
+                    self.emit(Opcode::Control(SetGlobal), vec![idx])?;
                 }
                 ast::Statement::Return(r) => {
                     self.compile(ast::Node::Expression(r.value))?;
-                    self.emit(Opcode::Control(ControlOpcode::ReturnValue), vec![])?;
+                    self.emit(Opcode::Control(ReturnValue), vec![])?;
                 }
             },
         };
@@ -206,7 +199,7 @@ impl Compiler {
             self.compile(ast::Node::Expression(*e.right))?;
             self.compile(ast::Node::Expression(*e.left))?;
 
-            self.emit(Opcode::Binary(BinaryOpcode::GreaterThan), vec![])?;
+            self.emit(Opcode::Binary(GreaterThan), vec![])?;
             return Ok(());
         }
 
@@ -215,14 +208,14 @@ impl Compiler {
         self.compile(ast::Node::Expression(*e.right))?;
 
         let op = match e.operator {
-            Token::Plus => BinaryOpcode::Add,
-            Token::Minus => BinaryOpcode::Sub,
-            Token::Asterisk => BinaryOpcode::Mul,
-            Token::Slash => BinaryOpcode::Div,
-            Token::Percent => BinaryOpcode::Mod,
-            Token::Equal => BinaryOpcode::Equal,
-            Token::NotEqual => BinaryOpcode::NotEqual,
-            Token::GreaterThan => BinaryOpcode::GreaterThan,
+            Token::Plus => Add,
+            Token::Minus => Sub,
+            Token::Asterisk => Mul,
+            Token::Slash => Div,
+            Token::Percent => Mod,
+            Token::Equal => Equal,
+            Token::NotEqual => NotEqual,
+            Token::GreaterThan => GreaterThan,
             _ => panic!("unhandled infix operator: {:?}", e.operator),
         };
 
@@ -236,15 +229,14 @@ impl Compiler {
         // Emit a jump with a placeholder operand, but track its
         // position so we can replace the operand at a later time
         // once we've emitted more instructions.
-        let jump_not_true_pos =
-            self.emit(Opcode::Control(ControlOpcode::JumpNotTrue), vec![9999])?;
+        let jump_not_true_pos = self.emit(Opcode::Control(JumpNotTrue), vec![9999])?;
 
         self.compile(ast::Node::Statement(ast::Statement::Block(e.consequence)))?;
-        self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
+        self.try_remove_last(Opcode::Control(Pop));
 
         // Emit a jump with a placeholder that enables the null branch if there
         // is no alternative.
-        let jump_pos = self.emit(Opcode::Control(ControlOpcode::Jump), vec![9999])?;
+        let jump_pos = self.emit(Opcode::Control(Jump), vec![9999])?;
 
         // Rewrite the jump with the correct instruction pointer.
         self.change_operand(jump_not_true_pos, self.scope().instructions.len())?;
@@ -252,10 +244,10 @@ impl Compiler {
         if let Some(a) = e.alternative {
             // We have an alternative, compile it.
             self.compile(ast::Node::Statement(ast::Statement::Block(a)))?;
-            self.try_remove_last(Opcode::Control(ControlOpcode::Pop));
+            self.try_remove_last(Opcode::Control(Pop));
         } else {
             // There is no alternative, emit a null.
-            self.emit(Opcode::Control(ControlOpcode::Null), vec![])?;
+            self.emit(Opcode::Control(Null), vec![])?;
         }
 
         self.change_operand(jump_pos, self.scope().instructions.len())?;
@@ -338,7 +330,7 @@ impl Compiler {
             .expect("last must not be none")
             .pos;
 
-        let op = Opcode::Control(ControlOpcode::ReturnValue);
+        let op = Opcode::Control(ReturnValue);
 
         let ins = code::make(op, &[]).map_err(Error::Code)?;
         self.replace_instruction(pos, &ins);
