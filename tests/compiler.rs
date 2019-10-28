@@ -552,6 +552,133 @@ fn compiler_ok() {
                 }),
             ],
         ),
+        (
+            "fn() { 5 + 10 }",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(5),
+                Object::Integer(10),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 5
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        // 10
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x01,
+                        // add, return
+                        BinaryOpcode::Add as u8,
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
+        (
+            "fn() { 1; 2 }",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x02,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(1),
+                Object::Integer(2),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 1
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        ControlOpcode::Pop as u8,
+                        // 2
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x01,
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
+        (
+            "fn() { }",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::CompiledFunction(object::CompiledFunction {
+                instructions: vec![ControlOpcode::Return as u8],
+            })],
+        ),
+        (
+            "fn() { 24 }();",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // call
+                ControlOpcode::Call as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(24),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 24
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        // return
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
+        (
+            "let noArg = fn() { 24 }; noArg();",
+            vec![
+                // function
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // noArg bindings
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                ControlOpcode::GetGlobal as u8,
+                0x00,
+                0x00,
+                // call
+                ControlOpcode::Call as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(24),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 24
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        // return
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
@@ -559,7 +686,7 @@ fn compiler_ok() {
 
         // Check constants first for easier debugging.
         assert_eq!(*constants, bc.constants, "unexpected constants");
-        assert_instructions(instructions, &bc.instructions);
+        assert_instructions(&input, instructions, &bc.instructions);
     }
 }
 
@@ -596,14 +723,14 @@ fn symbol_table_ok() {
     }
 }
 
-fn assert_instructions(want: &[u8], got: &[u8]) {
+fn assert_instructions(input: &str, want: &[u8], got: &[u8]) {
     let want_ins = Instructions::parse(want).expect("failed to parse want instructions");
     let got_ins = Instructions::parse(got).expect("failed to parse got instructions");
 
     assert_eq!(
         want_ins, got_ins,
-        "unexpected instructions stream:\nwant:\n{}\ngot:\n{}",
-        want_ins, got_ins
+        "\ninput: {}, unexpected instructions stream:\nwant:\n{}\ngot:\n{}",
+        input, want_ins, got_ins
     );
 }
 

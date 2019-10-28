@@ -70,6 +70,10 @@ impl Compiler {
 
                     self.emit(Opcode::Control(op), vec![])?;
                 }
+                ast::Expression::Call(c) => {
+                    self.compile(ast::Node::Expression(*c.function))?;
+                    self.emit(Opcode::Control(ControlOpcode::Call), vec![])?;
+                }
                 ast::Expression::Float(f) => {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
@@ -81,6 +85,17 @@ impl Compiler {
                     // later time.
                     self.enter_scope();
                     self.compile(ast::Node::Statement(ast::Statement::Block(f.body)))?;
+
+                    // Allow the return value to be passed to the calling scope.
+                    if self.is_last(Opcode::Control(ControlOpcode::Pop)) {
+                        self.replace_last_with_return()?;
+                    }
+
+                    // If there was no return value, make an implicit return.
+                    if !self.is_last(Opcode::Control(ControlOpcode::ReturnValue)) {
+                        self.emit(Opcode::Control(ControlOpcode::Return), vec![])?;
+                    }
+
                     let instructions = self.leave_scope();
 
                     let oper = vec![self.add_constant(Object::CompiledFunction(
@@ -149,7 +164,6 @@ impl Compiler {
                     let oper = vec![self.add_constant(Object::String(s))];
                     self.emit(Opcode::Control(ControlOpcode::Constant), oper)?;
                 }
-                _ => panic!("unhandled expression type"),
             },
             ast::Node::Statement(s) => match s {
                 ast::Statement::Expression(e) => {
@@ -281,6 +295,13 @@ impl Compiler {
         scope.last = last;
     }
 
+    fn is_last(&self, op: Opcode) -> bool {
+        match &self.scope().last {
+            Some(e) => e.op == op,
+            None => false,
+        }
+    }
+
     fn try_remove_last(&mut self, op: Opcode) -> bool {
         let scope = self.scope_mut();
         match &scope.last {
@@ -306,6 +327,28 @@ impl Compiler {
         let ins = code::make(op, &[operand]).map_err(Error::Code)?;
 
         self.replace_instruction(op_pos, &ins);
+        Ok(())
+    }
+
+    fn replace_last_with_return(&mut self) -> Result<()> {
+        let pos = self
+            .scope()
+            .last
+            .as_ref()
+            .expect("last must not be none")
+            .pos;
+
+        let op = Opcode::Control(ControlOpcode::ReturnValue);
+
+        let ins = code::make(op, &[]).map_err(Error::Code)?;
+        self.replace_instruction(pos, &ins);
+
+        self.scope_mut()
+            .last
+            .as_mut()
+            .expect("last must not be none")
+            .op = op;
+
         Ok(())
     }
 
