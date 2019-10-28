@@ -141,6 +141,8 @@ impl Compiler {
                     let op = match p.operator {
                         Token::Minus => Negate,
                         Token::Bang => Not,
+                        Token::Ampersand => Address,
+                        Token::Asterisk => Dereference,
                         _ => panic!("unhandled prefix operator: {:?}", p.operator),
                     };
 
@@ -174,6 +176,22 @@ impl Compiler {
                     // Define this identifier with an index.
                     let idx = self.symbols.define(l.name);
                     self.emit(Opcode::Control(SetGlobal), vec![idx])?;
+                }
+                ast::Statement::LetDereference(l) => {
+                    self.compile(ast::Node::Expression(l.value))?;
+
+                    // Resolve this identifier's index so the VM can dereference
+                    // one or more pointers.
+                    //
+                    // BUG(mdlayher): we can't properly handle multiple
+                    // pointers at this point.
+                    let idx = self
+                        .symbols
+                        .resolve(&l.name)
+                        .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(l.name)))?
+                        .index;
+
+                    self.emit(Opcode::Control(SetPointer), vec![idx])?;
                 }
                 ast::Statement::Return(r) => {
                     self.compile(ast::Node::Expression(r.value))?;
@@ -413,7 +431,6 @@ impl SymbolTable {
 /// A symbol definition.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Symbol {
-    //pub name: String,
     pub scope: Scope,
     pub index: usize,
 }

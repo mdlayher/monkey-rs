@@ -318,6 +318,17 @@ fn parse_set_expressions() {
 }
 
 #[test]
+fn parse_pointer_expressions() {
+    let tests = vec![("&1", "(&1)"), ("&&1", "(&(&1))"), ("*&1", "(*(&1))")];
+
+    for (input, want) in tests {
+        let got = format!("{}", parse(input));
+
+        assert_eq!(want, got);
+    }
+}
+
+#[test]
 fn parse_operator_precedence() {
     let tests = vec![
         ("-a * b", "((-a) * b)"),

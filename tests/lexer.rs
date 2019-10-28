@@ -33,6 +33,7 @@ if (5 < 10) {
 "foo bar"
 [1, 2];
 {"foo": "bar"}
+&five
 "#,
     )
     .lex()
@@ -192,6 +193,9 @@ if (5 < 10) {
         Token::Colon,
         Token::String("bar".to_string()),
         Token::RightBrace,
+        //
+        Token::Ampersand,
+        Token::Identifier("five".to_string()),
         //
         Token::Eof,
     ];

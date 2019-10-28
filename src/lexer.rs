@@ -81,6 +81,7 @@ impl<'a> Lexer<'a> {
             '%' => Token::Percent,
             '<' => Token::LessThan,
             '>' => Token::GreaterThan,
+            '&' => Token::Ampersand,
             ',' => Token::Comma,
             ':' => Token::Colon,
             ';' => Token::Semicolon,

@@ -53,6 +53,7 @@ impl fmt::Display for Program {
 pub enum Statement {
     Expression(Expression),
     Let(LetStatement),
+    LetDereference(LetDereferenceStatement),
     Return(ReturnStatement),
     Block(BlockStatement),
 }
@@ -62,6 +63,7 @@ impl fmt::Display for Statement {
         match self {
             Statement::Expression(stmt) => stmt.fmt(f),
             Statement::Let(stmt) => stmt.fmt(f),
+            Statement::LetDereference(stmt) => stmt.fmt(f),
             Statement::Return(stmt) => stmt.fmt(f),
             Statement::Block(stmt) => stmt.fmt(f),
         }
@@ -78,6 +80,19 @@ pub struct LetStatement {
 impl fmt::Display for LetStatement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "let {} = {};", self.name, self.value)
+    }
+}
+
+/// A statement that binds an expression through a pointer dereference.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct LetDereferenceStatement {
+    pub name: String,
+    pub value: Expression,
+}
+
+impl fmt::Display for LetDereferenceStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "let *{} = {};", self.name, self.value)
     }
 }
 

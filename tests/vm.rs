@@ -231,12 +231,50 @@ fn vm_run_ok() {
             ",
             Object::Integer(1),
         ),
+        (
+            "
+                let one = fn() { &1; };
+                *one();
+            ",
+            Object::Integer(1),
+        ),
+        (
+            "
+                let a = &1;
+                let b = &2;
+                *(a + 1);
+            ",
+            Object::Integer(2),
+        ),
+        (
+            "
+                let a = &1;
+                let b = &2;
+                *(b - 1);
+            ",
+            Object::Integer(1),
+        ),
+        (
+            "
+                let a = &&&1;
+                ***a;
+            ",
+            Object::Integer(1),
+        ),
+        (
+            // BUG(mdlayher): let* assigns through multiple indirections.
+            "
+                let a = &&&1;
+                let *a = 2;
+                ***a;
+            ",
+            Object::Integer(2),
+        ),
     ];
 
     for (input, want) in &tests {
-        let mut stack = new_stack();
         let bc = compile(input);
-        let mut vm = Vm::new(&mut stack, bc.clone());
+        let mut vm = Vm::new(bc.clone());
         vm.run().expect("failed to run VM");
 
         assert_eq!(
@@ -334,8 +372,7 @@ fn vm_runtime_errors() {
     ];
 
     for (input, want) in &tests {
-        let mut stack = new_stack();
-        let mut vm = Vm::new(&mut stack, compile(input));
+        let mut vm = Vm::new(compile(input));
         let err = vm.run().expect_err("run did not return an error");
 
         if let Error::Runtime(got) = err {
@@ -348,11 +385,11 @@ fn vm_runtime_errors() {
 
 #[test]
 fn vm_grow_stack() {
-    // Start with an empty stack and make the VM grow the stack as more values
-    // are added.
-    let mut stack = vec![];
-    let mut vm = Vm::new(&mut stack, compile("1 + (1 + (1 + (1 + 1)))"));
+    // The VM should grow its stack as needed.
+    let mut vm = Vm::with_stack_size(compile("1 + (1 + (1 + (1 + 1)))"), 0);
     vm.run().expect("failed to run VM");
+
+    let stack = vm.dump_stack();
 
     // Expect the stack to have grown at least large enough to hold all 5
     // elements.

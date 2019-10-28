@@ -9,7 +9,7 @@ use mdl_monkey::lexer::Lexer;
 use mdl_monkey::object::Environment;
 use mdl_monkey::parser::Parser;
 use mdl_monkey::token::Token;
-use mdl_monkey::vm::{self, Vm};
+use mdl_monkey::vm::Vm;
 
 use getopts::Options;
 use std::env;
@@ -126,8 +126,7 @@ fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
         println!("\nbytecode:\n\n{}", ins);
     }
 
-    let mut stack = vm::new_stack();
-    let mut vm = Vm::new(&mut stack, bc);
+    let mut vm = Vm::new(bc);
     vm.run().map_err(|err| err.to_string())?;
 
     println!("compiler/VM:");

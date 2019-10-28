@@ -679,6 +679,52 @@ fn compiler_ok() {
                 }),
             ],
         ),
+        (
+            "let one = &1; *one;",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // address
+                UnaryOpcode::Address as u8,
+                // one bindings
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                ControlOpcode::GetGlobal as u8,
+                0x00,
+                0x00,
+                // dereference
+                UnaryOpcode::Dereference as u8,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![Object::Integer(1)],
+        ),
+        (
+            "let one = &1; let *one = 2;",
+            vec![
+                // 1
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // address
+                UnaryOpcode::Address as u8,
+                // one binding
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                // 2
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                // one pointer dereference
+                ControlOpcode::SetPointer as u8,
+                0x00,
+                0x00,
+            ],
+            vec![Object::Integer(1), Object::Integer(2)],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {

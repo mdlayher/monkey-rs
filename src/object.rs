@@ -29,6 +29,7 @@ pub enum Object {
     Hash(Hash),
     Set(Set),
     CompiledFunction(CompiledFunction),
+    Pointer(usize),
 }
 
 impl fmt::Display for Object {
@@ -46,6 +47,7 @@ impl fmt::Display for Object {
             Object::Hash(h) => h.fmt(f),
             Object::Set(s) => s.fmt(f),
             Object::CompiledFunction(func) => func.fmt(f),
+            Object::Pointer(p) => write!(f, "{:#06x}", p),
         }
     }
 }

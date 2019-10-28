@@ -29,6 +29,7 @@ pub enum Token {
     NotEqual,
     LessThan,
     GreaterThan,
+    Ampersand,
 
     // Delimiters.
     Comma,
@@ -74,6 +75,7 @@ impl fmt::Display for Token {
             Token::NotEqual => write!(f, "!="),
             Token::LessThan => write!(f, "<"),
             Token::GreaterThan => write!(f, ">"),
+            Token::Ampersand => write!(f, "&"),
 
             Token::Comma => write!(f, ","),
             Token::Colon => write!(f, ":"),

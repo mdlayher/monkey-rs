@@ -30,6 +30,9 @@ pub fn eval(node: ast::Node, env: &mut object::Environment) -> Result<Object> {
                 ast::Node::Expression(ret.value),
                 env,
             )?))),
+            // The evaluator is deprecated and new types will be handled
+            // exclusively by the compiler.
+            _ => unimplemented!(),
         },
         ast::Node::Expression(expr) => match expr {
             ast::Expression::Integer(i) => Ok(Object::Integer(i.value)),

@@ -83,6 +83,13 @@ impl<'a> Parser<'a> {
     /// Parses a let statement.
     fn parse_let_statement(&mut self) -> Result<ast::Statement> {
         self.next_token()?;
+
+        // TODO(mdlayher): support multiple indirections.
+        let is_pointer = self.current == Token::Asterisk;
+        if is_pointer {
+            self.next_token()?;
+        }
+
         let name = self.parse_identifier_name()?;
 
         self.expect(Token::Assign)?;
@@ -94,7 +101,13 @@ impl<'a> Parser<'a> {
             self.next_token()?;
         }
 
-        Ok(ast::Statement::Let(ast::LetStatement { name, value }))
+        if is_pointer {
+            Ok(ast::Statement::LetDereference(
+                ast::LetDereferenceStatement { name, value },
+            ))
+        } else {
+            Ok(ast::Statement::Let(ast::LetStatement { name, value }))
+        }
     }
 
     /// Parses a return statement.
@@ -163,7 +176,9 @@ impl<'a> Parser<'a> {
             Token::Float(f) => Ok(ast::Expression::Float(*f)),
             Token::String(s) => Ok(ast::Expression::String(s.to_string())),
             b @ Token::True | b @ Token::False => Ok(ast::Expression::Boolean(*b == Token::True)),
-            Token::Bang | Token::Minus => self.parse_prefix_expression(),
+            Token::Bang | Token::Minus | Token::Ampersand | Token::Asterisk => {
+                self.parse_prefix_expression()
+            }
             Token::LeftParen => self.parse_grouped_expression(),
             Token::LeftBracket => {
                 let elements = self.parse_expression_list(Token::RightBracket)?;

@@ -20,28 +20,30 @@ use crate::{
 use byteorder::{BigEndian, ReadBytesExt};
 
 /// A virtual machine that can execute monkey bytecode.
-pub struct Vm<'a> {
-    stack: &'a mut Vec<Object>,
+pub struct Vm {
+    stack: Vec<Object>,
     sp: usize,
+    heap: Vec<Object>,
     globals: Vec<Object>,
     consts: Vec<Object>,
     frames: FrameStack,
 }
 
-/// Creates a stack of a suitable size for use with `Vm::new`.
-pub fn new_stack() -> Vec<Object> {
-    vec![Object::Null; 64]
-}
-
-impl<'a> Vm<'a> {
+impl Vm {
     /// Creates a new `Vm` that uses the input stack.
-    pub fn new(stack: &'a mut Vec<Object>, bc: compiler::Bytecode) -> Self {
+    pub fn new(bc: compiler::Bytecode) -> Self {
+        Self::with_stack_size(bc, 16)
+    }
+
+    /// Creates a new `Vm` with the specified initial stack size.
+    pub fn with_stack_size(bc: compiler::Bytecode, n: usize) -> Self {
         Vm {
-            stack,
+            stack: vec![Object::Null; n],
             sp: 0,
             // TODO: grow globals vector as needed.
             globals: vec![Object::Null; 64],
             consts: bc.constants,
+            heap: vec![],
             frames: FrameStack(vec![Frame::new(bc.instructions)]),
         }
     }
@@ -51,9 +53,14 @@ impl<'a> Vm<'a> {
         &self.stack[self.sp]
     }
 
-    /// Creates a copy of the in-use portion of the stack.
+    /// Creates a copy of the stack.
     pub fn dump_stack(&self) -> Vec<Object> {
-        self.stack.iter().take(self.sp).cloned().collect()
+        self.stack.to_vec()
+    }
+
+    /// Creates a copy of the heap.
+    pub fn dump_heap(&self) -> Vec<Object> {
+        self.heap.to_vec()
     }
 
     /// Runs the virtual machine.
@@ -163,6 +170,14 @@ impl<'a> Vm<'a> {
                 // NB: see above note in ReturnValue.
                 self.push(Object::Null);
             }
+            ControlOpcode::SetPointer => {
+                // Just need the index of the single element.
+                let (i, _) = self.pop_n(1);
+
+                // Overwrite the element at the specified index in the heap.
+                let idx = self.frames.current_mut().read_u16()?;
+                self.heap[idx as usize] = self.stack[i].clone();
+            }
         };
 
         Ok(())
@@ -183,6 +198,14 @@ impl<'a> Vm<'a> {
                 _ => object::FALSE,
             },
             (UnaryOpcode::Negate, Object::Integer(i)) => Object::Integer(-i),
+            (UnaryOpcode::Address, v) => {
+                self.heap.push(v.clone());
+                Object::Pointer(self.heap.len() - 1)
+            }
+            (UnaryOpcode::Dereference, Object::Pointer(p)) => match self.heap.get(*p) {
+                Some(v) => v.clone(),
+                None => Object::Null,
+            },
             // Invalid combination.
             (_, _) => {
                 return Err(Error::bad_arguments(
@@ -277,6 +300,17 @@ impl<'a> Vm<'a> {
                         args,
                     ))
                 }
+            }
+            // Pointer arithmetic with integer operations.
+            (Object::Integer(l), Object::Pointer(r)) => {
+                let obj = Self::pointer_arithmetic_op(op, args, *l, *r as i64)?;
+                self.push(obj);
+                Ok(())
+            }
+            (Object::Pointer(l), Object::Integer(r)) => {
+                let obj = Self::pointer_arithmetic_op(op, args, *l as i64, *r)?;
+                self.push(obj);
+                Ok(())
             }
             // Set operations.
             (Object::Set(l), Object::Set(r)) => {
@@ -475,6 +509,24 @@ impl<'a> Vm<'a> {
         Ok(Object::Set(object::Set { set }))
     }
 
+    /// Executes a pointer arithmetic operation.
+    fn pointer_arithmetic_op(op: BinaryOpcode, args: &[Object], l: i64, r: i64) -> Result<Object> {
+        let out = match op {
+            BinaryOpcode::Add => l + r,
+            BinaryOpcode::Sub => l - r,
+            _ => {
+                // Reign in the pointer arithmetic madness!
+                return Err(Error::bad_arguments(
+                    BadArgumentKind::BinaryOperatorUnsupported,
+                    Opcode::Binary(op),
+                    args,
+                ));
+            }
+        };
+
+        Ok(Object::Pointer(out as usize))
+    }
+
     /// Executes a composite indexing operation.
     fn composite_index_op(args: &[Object]) -> Result<Object> {
         assert_eq!(
@@ -653,6 +705,7 @@ pub enum ErrorKind {
     },
     DuplicateKey(object::Hashable),
     BadFunctionCall(Object),
+    BadPointerDereference(Object),
     Object(object::Error),
 }
 
@@ -680,6 +733,9 @@ impl fmt::Display for ErrorKind {
             },
             ErrorKind::DuplicateKey(k) => write!(f, "duplicate key {} in data structure", k),
             ErrorKind::BadFunctionCall(o) => write!(f, "cannot call object {:?} as a function", o),
+            ErrorKind::BadPointerDereference(o) => {
+                write!(f, "cannot dereference non-pointer object {:?}", o)
+            }
             ErrorKind::Object(err) => write!(f, "object error: {}", err),
         }
     }

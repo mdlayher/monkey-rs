@@ -33,12 +33,15 @@ pub enum ControlOpcode {
     Call = 0x09,
     ReturnValue = 0x0a,
     Return = 0x0b,
+    SetPointer = 0x0c,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnaryOpcode {
     Negate = 0x10,
     Not = 0x11,
+    Address = 0x12,
+    Dereference = 0x13,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -100,6 +103,7 @@ impl fmt::Display for ControlOpcode {
             Self::Call => write!(f, "CALL"),
             Self::ReturnValue => write!(f, "RETURN VALUE"),
             Self::Return => write!(f, "RETURN"),
+            Self::SetPointer => write!(f, "SET POINTER"),
         }
     }
 }
@@ -120,6 +124,7 @@ impl From<u8> for ControlOpcode {
             0x09 => ControlOpcode::Call,
             0x0a => ControlOpcode::ReturnValue,
             0x0b => ControlOpcode::Return,
+            0x0c => ControlOpcode::SetPointer,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -130,6 +135,8 @@ impl fmt::Display for UnaryOpcode {
         match self {
             Self::Negate => write!(f, "-"),
             Self::Not => write!(f, "!"),
+            Self::Address => write!(f, "&"),
+            Self::Dereference => write!(f, "*"),
         }
     }
 }
@@ -140,6 +147,8 @@ impl From<u8> for UnaryOpcode {
         match v {
             0x10 => UnaryOpcode::Negate,
             0x11 => UnaryOpcode::Not,
+            0x12 => UnaryOpcode::Address,
+            0x13 => UnaryOpcode::Dereference,
             _ => panic!("unhandled u8 to UnaryOpcode conversion: {}", v),
         }
     }
@@ -363,6 +372,10 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
                 name: "Return",
                 operand_widths: vec![],
             },
+            ControlOpcode::SetPointer => Definition {
+                name: "SetPointer",
+                operand_widths: vec![Width::Two],
+            },
         },
         Opcode::Unary(u) => match u {
             UnaryOpcode::Negate => Definition {
@@ -371,6 +384,14 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             },
             UnaryOpcode::Not => Definition {
                 name: "Not",
+                operand_widths: vec![],
+            },
+            UnaryOpcode::Address => Definition {
+                name: "Address",
+                operand_widths: vec![],
+            },
+            UnaryOpcode::Dereference => Definition {
+                name: "Dereference",
                 operand_widths: vec![],
             },
         },
