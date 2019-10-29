@@ -24,6 +24,7 @@ pub struct Vm<'a> {
     stack: &'a mut Vec<Object>,
     sp: usize,
     globals: Vec<Object>,
+    frames: FrameStack,
 }
 
 /// Creates a stack of a suitable size for use with `Vm::new`.
@@ -39,6 +40,7 @@ impl<'a> Vm<'a> {
             sp: 0,
             // TODO: grow globals vector as needed.
             globals: vec![Object::Null; 64],
+            frames: FrameStack(Vec::with_capacity(1)),
         }
     }
 
@@ -54,15 +56,18 @@ impl<'a> Vm<'a> {
 
     /// Runs the virtual machine with the input `compiler::Bytecode`.
     pub fn run(&mut self, bc: compiler::Bytecode) -> Result<()> {
-        let mut ctx = RunContext::new(bc);
-        while ctx.run() {
-            let op = Opcode::from(ctx.read_u8()?);
+        // Create the initial stack frame from the input bytecode and begin
+        // the run loop.
+        self.frames.push(Frame::new(bc));
+
+        while self.frames.run() {
+            let op = Opcode::from(self.frames.current_mut().read_u8()?);
 
             match op {
-                Opcode::Control(ctrl) => self.control_op(&mut ctx, ctrl)?,
+                Opcode::Control(ctrl) => self.control_op(ctrl)?,
                 Opcode::Unary(u) => self.unary_op(u)?,
                 Opcode::Binary(b) => self.binary_op(b)?,
-                Opcode::Composite(com) => self.composite_op(&mut ctx, com)?,
+                Opcode::Composite(com) => self.composite_op(com)?,
             };
         }
 
@@ -70,11 +75,15 @@ impl<'a> Vm<'a> {
     }
 
     /// Executes a control operation.
-    fn control_op(&mut self, ctx: &mut RunContext, op: ControlOpcode) -> Result<()> {
+    fn control_op(&mut self, op: ControlOpcode) -> Result<()> {
         match op {
             ControlOpcode::Constant => {
+                let ctx = self.frames.current_mut();
+
                 let idx = ctx.read_u16()?;
-                self.push(ctx.consts[idx as usize].clone());
+                let v = ctx.consts[idx as usize].clone();
+
+                self.push(v);
             }
             ControlOpcode::Pop => {
                 self.pop_n(1);
@@ -87,13 +96,14 @@ impl<'a> Vm<'a> {
             }
             ControlOpcode::Jump => {
                 // Immediately jump to the specified index.
+                let ctx = self.frames.current_mut();
                 let idx = ctx.read_u16()?;
                 ctx.seek(io::SeekFrom::Start(u64::from(idx)))?;
             }
             ControlOpcode::JumpNotTrue => {
                 // Conditionally jump to the specified index if the
                 // top value on the stack is not truthy.
-                let idx = ctx.read_u16()?;
+                let idx = self.frames.current_mut().read_u16()?;
 
                 let (start, end) = self.pop_n(1);
                 let args = &self.stack[start..end];
@@ -104,7 +114,9 @@ impl<'a> Vm<'a> {
                     _ => true,
                 };
                 if !truthy {
-                    ctx.seek(io::SeekFrom::Start(u64::from(idx)))?;
+                    self.frames
+                        .current_mut()
+                        .seek(io::SeekFrom::Start(u64::from(idx)))?;
                 }
             }
             ControlOpcode::Null => {
@@ -113,7 +125,7 @@ impl<'a> Vm<'a> {
             ControlOpcode::GetGlobal => {
                 // Read a global from the operand's specified index and push
                 // its value onto the stack.
-                let idx = ctx.read_u16()?;
+                let idx = self.frames.current_mut().read_u16()?;
                 self.push(self.globals[idx as usize].clone());
             }
             ControlOpcode::SetGlobal => {
@@ -121,6 +133,7 @@ impl<'a> Vm<'a> {
                 let (start, _) = self.pop_n(1);
 
                 // Register a new global with the operand's specified index.
+                let ctx = self.frames.current_mut();
                 let idx = ctx.read_u16()?;
                 self.globals[idx as usize] = self.stack[start].clone();
             }
@@ -271,10 +284,10 @@ impl<'a> Vm<'a> {
     }
 
     /// Executes a composite operation against multiple objects.
-    fn composite_op(&mut self, ctx: &mut RunContext, op: CompositeOpcode) -> Result<()> {
+    fn composite_op(&mut self, op: CompositeOpcode) -> Result<()> {
         // Read the appropriate number of elements from the stack as indicated
         // by the composite opcode's operand.
-        let n = ctx.read_u16()? as usize;
+        let n = self.frames.current_mut().read_u16()? as usize;
 
         let (start, end) = self.pop_n(n);
         let args = &self.stack[start..end];
@@ -488,26 +501,47 @@ impl<'a> Vm<'a> {
     }
 }
 
-/// Contains context for a running `Vm` bytecode program.
-struct RunContext {
+/// Stores a stack of stack frames that can track function execution.
+struct FrameStack(Vec<Frame>);
+
+impl FrameStack {
+    /// Produces a `&Frame` of the current frame on the stack.
+    fn current(&self) -> &Frame {
+        self.0.last().expect("must not be none")
+    }
+
+    /// Produces a `&mut Frame` of the current frame on the stack.
+    fn current_mut(&mut self) -> &mut Frame {
+        self.0.last_mut().expect("must not be none")
+    }
+
+    /// Pushes a new `Frame` onto the stack.
+    fn push(&mut self, f: Frame) {
+        self.0.push(f);
+    }
+
+    /// Determines if more instructions can be read and executed.
+    fn run(&self) -> bool {
+        let c = self.current();
+        c.c.position() < c.ins_len
+    }
+}
+
+/// Stores a stack frame for a running `Vm` bytecode program.
+struct Frame {
     ins_len: u64,
     c: io::Cursor<Vec<u8>>,
     consts: Vec<Object>,
 }
 
-impl RunContext {
-    /// Produces a `RunContext` from input `compiler::Bytecode`.
+impl Frame {
+    /// Produces a `Frame` from input `compiler::Bytecode`.
     fn new(bc: compiler::Bytecode) -> Self {
-        RunContext {
+        Frame {
             ins_len: bc.instructions.len() as u64,
             c: io::Cursor::new(bc.instructions),
             consts: bc.constants,
         }
-    }
-
-    /// Determines if more instructions can be read and executed.
-    fn run(&self) -> bool {
-        self.c.position() < self.ins_len
     }
 
     /// Seeks to the specified location in the instructions stream.
