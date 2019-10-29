@@ -127,8 +127,8 @@ fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
     }
 
     let mut stack = vm::new_stack();
-    let mut vm = Vm::new(&mut stack);
-    vm.run(bc).map_err(|err| err.to_string())?;
+    let mut vm = Vm::new(&mut stack, bc);
+    vm.run().map_err(|err| err.to_string())?;
 
     println!("compiler/VM:");
 

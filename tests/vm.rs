@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use mdl_monkey::{
     ast,
-    code::{BinaryOpcode, Opcode, UnaryOpcode},
+    code::{self, BinaryOpcode, Opcode, UnaryOpcode},
     compiler, lexer,
     object::{self, Hashable, Object},
     parser,
@@ -169,19 +169,84 @@ fn vm_run_ok() {
                 },
             }),
         ),
+        (
+            "
+                let do = fn() { 5 + 10; };
+                do();
+            ",
+            Object::Integer(15),
+        ),
+        (
+            "
+                let one = fn() { 1; };
+                let two = fn() { 2; };
+                one() + two()
+            ",
+            Object::Integer(3),
+        ),
+        (
+            "
+                let a = fn() { 1; };
+                let b = fn() { a() + 1; };
+                let c = fn() { b() + 1; };
+                c();
+            ",
+            Object::Integer(3),
+        ),
+        (
+            "
+                let early = fn() { return 99; 100; };
+                early();
+            ",
+            Object::Integer(99),
+        ),
+        (
+            "
+                let early = fn() { return 99; return 100; };
+                early();
+            ",
+            Object::Integer(99),
+        ),
+        (
+            "
+                let none = fn() { };
+                none();
+            ",
+            Object::Null,
+        ),
+        (
+            "
+                let one = fn() { };
+                let two = fn() { one(); };
+                one();
+                two();
+            ",
+            Object::Null,
+        ),
+        (
+            "
+                let one = fn() { 1; };
+                let wrap = fn() { one; };
+                wrap()();
+            ",
+            Object::Integer(1),
+        ),
     ];
 
     for (input, want) in &tests {
         let mut stack = new_stack();
-        let mut vm = Vm::new(&mut stack);
-        vm.run(compile(input)).expect("failed to run VM");
+        let bc = compile(input);
+        let mut vm = Vm::new(&mut stack, bc.clone());
+        vm.run().expect("failed to run VM");
 
         assert_eq!(
             *want,
             *vm.last_popped(),
-            "input: {}, incorrect value removed from stack, debug:\n{:?}",
+            "\ninput: {}, incorrect value removed from stack\n\nstack: {:?}\n\nconstants: {:?}\n\nbytecode:\n\n{}",
             input,
             vm.dump_stack(),
+            bc.constants,
+            code::Instructions::parse(&bc.instructions).expect("must parse"),
         );
     }
 }
@@ -270,10 +335,8 @@ fn vm_runtime_errors() {
 
     for (input, want) in &tests {
         let mut stack = new_stack();
-        let mut vm = Vm::new(&mut stack);
-        let err = vm
-            .run(compile(input))
-            .expect_err("run did not return an error");
+        let mut vm = Vm::new(&mut stack, compile(input));
+        let err = vm.run().expect_err("run did not return an error");
 
         if let Error::Runtime(got) = err {
             assert_eq!(*want, got);
@@ -288,9 +351,8 @@ fn vm_grow_stack() {
     // Start with an empty stack and make the VM grow the stack as more values
     // are added.
     let mut stack = vec![];
-    let mut vm = Vm::new(&mut stack);
-    vm.run(compile("1 + (1 + (1 + (1 + 1)))"))
-        .expect("failed to run VM");
+    let mut vm = Vm::new(&mut stack, compile("1 + (1 + (1 + (1 + 1)))"));
+    vm.run().expect("failed to run VM");
 
     // Expect the stack to have grown at least large enough to hold all 5
     // elements.

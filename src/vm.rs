@@ -24,6 +24,7 @@ pub struct Vm<'a> {
     stack: &'a mut Vec<Object>,
     sp: usize,
     globals: Vec<Object>,
+    consts: Vec<Object>,
     frames: FrameStack,
 }
 
@@ -34,13 +35,14 @@ pub fn new_stack() -> Vec<Object> {
 
 impl<'a> Vm<'a> {
     /// Creates a new `Vm` that uses the input stack.
-    pub fn new(stack: &'a mut Vec<Object>) -> Self {
+    pub fn new(stack: &'a mut Vec<Object>, bc: compiler::Bytecode) -> Self {
         Vm {
             stack,
             sp: 0,
             // TODO: grow globals vector as needed.
             globals: vec![Object::Null; 64],
-            frames: FrameStack(Vec::with_capacity(1)),
+            consts: bc.constants,
+            frames: FrameStack(vec![Frame::new(bc.instructions)]),
         }
     }
 
@@ -54,12 +56,9 @@ impl<'a> Vm<'a> {
         self.stack.iter().take(self.sp).cloned().collect()
     }
 
-    /// Runs the virtual machine with the input `compiler::Bytecode`.
-    pub fn run(&mut self, bc: compiler::Bytecode) -> Result<()> {
-        // Create the initial stack frame from the input bytecode and begin
-        // the run loop.
-        self.frames.push(Frame::new(bc));
-
+    /// Runs the virtual machine.
+    pub fn run(&mut self) -> Result<()> {
+        // Run until there are no more instructions.
         while self.frames.run() {
             let op = Opcode::from(self.frames.current_mut().read_u8()?);
 
@@ -78,12 +77,8 @@ impl<'a> Vm<'a> {
     fn control_op(&mut self, op: ControlOpcode) -> Result<()> {
         match op {
             ControlOpcode::Constant => {
-                let ctx = self.frames.current_mut();
-
-                let idx = ctx.read_u16()?;
-                let v = ctx.consts[idx as usize].clone();
-
-                self.push(v);
+                let idx = self.frames.current_mut().read_u16()?;
+                self.push(self.consts[idx as usize].clone());
             }
             ControlOpcode::Pop => {
                 self.pop_n(1);
@@ -137,7 +132,37 @@ impl<'a> Vm<'a> {
                 let idx = ctx.read_u16()?;
                 self.globals[idx as usize] = self.stack[start].clone();
             }
-            ControlOpcode::Call | ControlOpcode::ReturnValue | ControlOpcode::Return => unimplemented!(),
+            ControlOpcode::Call => {
+                // Just need the index of the single element.
+                let (start, _) = self.pop_n(1);
+                let obj = &self.stack[start];
+
+                let func = if let Object::CompiledFunction(f) = obj {
+                    f
+                } else {
+                    return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj.clone())));
+                };
+
+                self.frames.push(Frame::new(func.instructions.to_vec()));
+            }
+            ControlOpcode::ReturnValue => {
+                let (i, _) = self.pop_n(1);
+                let ret = self.stack[i].clone();
+
+                self.frames.pop();
+
+                // NB: the book specifies an extra pop_n(1) here and in Return,
+                // but it seems that our VM is already popping the function off
+                // the stack. Perhaps this is a slight error in the compiler,
+                // but it seems to work.
+                self.push(ret);
+            }
+            ControlOpcode::Return => {
+                self.frames.pop();
+
+                // NB: see above note in ReturnValue.
+                self.push(Object::Null);
+            }
         };
 
         Ok(())
@@ -520,6 +545,11 @@ impl FrameStack {
         self.0.push(f);
     }
 
+    /// Pops a `Frame` off the stack.
+    fn pop(&mut self) -> Frame {
+        self.0.pop().expect("must not be none")
+    }
+
     /// Determines if more instructions can be read and executed.
     fn run(&self) -> bool {
         let c = self.current();
@@ -531,16 +561,14 @@ impl FrameStack {
 struct Frame {
     ins_len: u64,
     c: io::Cursor<Vec<u8>>,
-    consts: Vec<Object>,
 }
 
 impl Frame {
     /// Produces a `Frame` from input `compiler::Bytecode`.
-    fn new(bc: compiler::Bytecode) -> Self {
+    fn new(instructions: Vec<u8>) -> Self {
         Frame {
-            ins_len: bc.instructions.len() as u64,
-            c: io::Cursor::new(bc.instructions),
-            consts: bc.constants,
+            ins_len: instructions.len() as u64,
+            c: io::Cursor::new(instructions),
         }
     }
 
@@ -624,6 +652,7 @@ pub enum ErrorKind {
         args: Vec<Object>,
     },
     DuplicateKey(object::Hashable),
+    BadFunctionCall(Object),
     Object(object::Error),
 }
 
@@ -650,6 +679,7 @@ impl fmt::Display for ErrorKind {
                 ),
             },
             ErrorKind::DuplicateKey(k) => write!(f, "duplicate key {} in data structure", k),
+            ErrorKind::BadFunctionCall(o) => write!(f, "cannot call object {:?} as a function", o),
             ErrorKind::Object(err) => write!(f, "object error: {}", err),
         }
     }
