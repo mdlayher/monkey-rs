@@ -64,3 +64,83 @@ pub enum Scope {
     Global,
     Local,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Scope, Symbol, SymbolTable};
+    use std::{cell::RefCell, rc::Rc};
+
+    #[test]
+    fn symbol_table_global_ok() {
+        let mut st = SymbolTable::default();
+        st.define("a".to_string());
+
+        let tests = vec![
+            (
+                "b",
+                Symbol {
+                    scope: Scope::Global,
+                    index: 1,
+                },
+            ),
+            (
+                "c",
+                Symbol {
+                    scope: Scope::Global,
+                    index: 2,
+                },
+            ),
+        ];
+
+        for (name, symbol) in &tests {
+            let defined = st.define(name.to_string());
+            let resolved = st.resolve(name).expect("a symbol should be defined");
+
+            assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
+            assert_eq!(resolved, *symbol, "test case symbol mismatch");
+
+            st.resolve(&"a").expect("a should always be defined");
+        }
+    }
+
+    #[test]
+    fn symbol_table_local_ok() {
+        let global = Rc::new(RefCell::new(SymbolTable::default()));
+        global.borrow_mut().define("a".to_string());
+
+        let local = Rc::new(RefCell::new(SymbolTable::new_enclosed(global)));
+        local.borrow_mut().define("b".to_string());
+
+        let mut nested = SymbolTable::new_enclosed(local);
+        nested.define("c".to_string());
+
+        let tests = vec![
+            (
+                "b",
+                Symbol {
+                    scope: Scope::Local,
+                    index: 1,
+                },
+            ),
+            (
+                "c",
+                Symbol {
+                    scope: Scope::Local,
+                    index: 2,
+                },
+            ),
+        ];
+
+        for (name, symbol) in &tests {
+            let defined = nested.define(name.to_string());
+            let resolved = nested.resolve(name).expect("a symbol should be defined");
+
+            assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
+            assert_eq!(resolved, *symbol, "test case symbol mismatch");
+
+            let gsym = nested.resolve(&"a").expect("a should always be defined");
+            assert_eq!(0, gsym.index);
+            assert_eq!(Scope::Global, gsym.scope);
+        }
+    }
+}
