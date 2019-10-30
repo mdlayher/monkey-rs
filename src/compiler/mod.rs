@@ -1,7 +1,12 @@
 //! A compiler for the Monkey programming language from
 //! <https://compilerbook.com/>.
 
-use std::{cell::RefCell, collections::HashMap, error, fmt, mem, rc::Rc, result};
+use std::{cell::RefCell, fmt, mem, rc::Rc};
+
+pub mod error;
+pub use error::{Error, ErrorKind, Result};
+mod symbol;
+use symbol::*;
 
 use crate::{
     ast,
@@ -446,110 +451,5 @@ impl fmt::Display for Bytecode {
             "{}",
             code::Instructions::parse(&self.instructions).expect("instructions must parse")
         )
-    }
-}
-
-/// A table that can be used to define and resolve `Symbols`.
-#[derive(Debug, Default)]
-pub struct SymbolTable {
-    store: HashMap<String, Symbol>,
-    num_definitions: usize,
-    outer: Option<Rc<RefCell<SymbolTable>>>,
-}
-
-impl SymbolTable {
-    /// Creates a new `SymbolTable` that can also reference symbols defined by
-    /// the `outer` table.
-    pub fn new_enclosed(outer: Rc<RefCell<Self>>) -> Self {
-        Self {
-            outer: Some(outer),
-            ..Self::default()
-        }
-    }
-
-    /// Defines a new `Symbol` by name.
-    pub fn define(&mut self, name: String) -> Symbol {
-        let scope = match self.outer {
-            Some(_) => Scope::Local,
-            None => Scope::Global,
-        };
-
-        let s = Symbol {
-            scope,
-            index: self.num_definitions,
-        };
-        self.num_definitions += 1;
-
-        self.store.insert(name, s.clone());
-        s
-    }
-
-    /// Resolves a `Symbol` by its name and returns whether or not it
-    /// was defined.
-    pub fn resolve(&self, name: &str) -> Option<Symbol> {
-        match (self.store.get(name), &self.outer) {
-            // We found a binding in this symbol table.
-            (Some(s), _) => Some(s.clone()),
-            // We did not find a binding; try the outer symbol table.
-            (None, Some(outer)) => outer.borrow().resolve(name),
-            // We found no binding and there is no outer symbol table.
-            (None, _) => None,
-        }
-    }
-}
-
-/// A symbol definition.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Symbol {
-    pub scope: Scope,
-    pub index: usize,
-}
-
-/// The scope of a symbol.
-#[derive(Clone, Debug, PartialEq)]
-pub enum Scope {
-    Global,
-    Local,
-}
-
-/// A Result type specialized use with for an Error.
-pub type Result<T> = result::Result<T, Error>;
-
-/// Specifies the different classes of errors which may occur.
-#[derive(Debug)]
-pub enum Error {
-    Compile(ErrorKind),
-    Code(code::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Compile(k) => write!(f, "compile error: {}", k),
-            Error::Code(c) => write!(f, "code error: {}", c),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match self {
-            Error::Compile(_) => None,
-            Error::Code(c) => Some(c),
-        }
-    }
-}
-
-/// Describes compilation errors which may occur.
-#[derive(Debug, PartialEq)]
-pub enum ErrorKind {
-    UndefinedIdentifier(String),
-}
-
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ErrorKind::UndefinedIdentifier(id) => write!(f, "undefined identifier: \"{}\"", id,),
-        }
     }
 }
