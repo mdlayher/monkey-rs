@@ -40,30 +40,30 @@ pub enum ControlOpcode {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnaryOpcode {
-    Negate = 0x10,
-    Not = 0x11,
-    Address = 0x12,
-    Dereference = 0x13,
+    Negate = 0x20,
+    Not = 0x21,
+    Address = 0x22,
+    Dereference = 0x23,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BinaryOpcode {
-    Add = 0x20,
-    Sub = 0x21,
-    Mul = 0x22,
-    Div = 0x23,
-    Mod = 0x24,
-    Equal = 0x25,
-    NotEqual = 0x26,
-    GreaterThan = 0x27,
-    Index = 0x28,
+    Add = 0x30,
+    Sub = 0x31,
+    Mul = 0x32,
+    Div = 0x33,
+    Mod = 0x34,
+    Equal = 0x35,
+    NotEqual = 0x36,
+    GreaterThan = 0x37,
+    Index = 0x38,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CompositeOpcode {
-    Array = 0x30,
-    Hash = 0x31,
-    Set = 0x32,
+    Array = 0x40,
+    Hash = 0x41,
+    Set = 0x42,
 }
 
 impl fmt::Display for Opcode {
@@ -81,10 +81,10 @@ impl From<u8> for Opcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
         match v {
-            0x00..=0x0f => Self::Control(ControlOpcode::from(v)),
-            0x10..=0x1f => Self::Unary(UnaryOpcode::from(v)),
-            0x20..=0x2f => Self::Binary(BinaryOpcode::from(v)),
-            0x30..=0x3f => Self::Composite(CompositeOpcode::from(v)),
+            0x00..=0x1f => Self::Control(ControlOpcode::from(v)),
+            0x20..=0x2f => Self::Unary(UnaryOpcode::from(v)),
+            0x30..=0x3f => Self::Binary(BinaryOpcode::from(v)),
+            0x40..=0x4f => Self::Composite(CompositeOpcode::from(v)),
             _ => panic!("unhandled u8 to Opcode conversion: {}", v),
         }
     }
@@ -151,10 +151,10 @@ impl From<u8> for UnaryOpcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
         match v {
-            0x10 => UnaryOpcode::Negate,
-            0x11 => UnaryOpcode::Not,
-            0x12 => UnaryOpcode::Address,
-            0x13 => UnaryOpcode::Dereference,
+            0x20 => UnaryOpcode::Negate,
+            0x21 => UnaryOpcode::Not,
+            0x22 => UnaryOpcode::Address,
+            0x23 => UnaryOpcode::Dereference,
             _ => panic!("unhandled u8 to UnaryOpcode conversion: {}", v),
         }
     }
@@ -180,15 +180,15 @@ impl From<u8> for BinaryOpcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
         match v {
-            0x20 => BinaryOpcode::Add,
-            0x21 => BinaryOpcode::Sub,
-            0x22 => BinaryOpcode::Mul,
-            0x23 => BinaryOpcode::Div,
-            0x24 => BinaryOpcode::Mod,
-            0x25 => BinaryOpcode::Equal,
-            0x26 => BinaryOpcode::NotEqual,
-            0x27 => BinaryOpcode::GreaterThan,
-            0x28 => BinaryOpcode::Index,
+            0x30 => BinaryOpcode::Add,
+            0x31 => BinaryOpcode::Sub,
+            0x32 => BinaryOpcode::Mul,
+            0x33 => BinaryOpcode::Div,
+            0x34 => BinaryOpcode::Mod,
+            0x35 => BinaryOpcode::Equal,
+            0x36 => BinaryOpcode::NotEqual,
+            0x37 => BinaryOpcode::GreaterThan,
+            0x38 => BinaryOpcode::Index,
             _ => panic!("unhandled u8 to BinaryOpcode conversion: {}", v),
         }
     }
@@ -208,9 +208,9 @@ impl From<u8> for CompositeOpcode {
     /// Convert from a u8 to an Opcode.
     fn from(v: u8) -> Self {
         match v {
-            0x30 => CompositeOpcode::Array,
-            0x31 => CompositeOpcode::Hash,
-            0x32 => CompositeOpcode::Set,
+            0x40 => CompositeOpcode::Array,
+            0x41 => CompositeOpcode::Hash,
+            0x42 => CompositeOpcode::Set,
             _ => panic!("unhandled u8 to CompositeOpcode conversion: {}", v),
         }
     }
