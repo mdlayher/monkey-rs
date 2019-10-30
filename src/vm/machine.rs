@@ -95,7 +95,7 @@ impl Vm {
                 self.push(self.consts[idx as usize].clone());
             }
             ControlOpcode::Pop => {
-                self.pop_n(1);
+                self.pop();
             }
             ControlOpcode::True => {
                 self.push(object::TRUE);
@@ -114,10 +114,7 @@ impl Vm {
                 // top value on the stack is not truthy.
                 let idx = self.frames.current_mut().read_u16()?;
 
-                let (start, end) = self.pop_n(1);
-                let args = &self.stack[start..end];
-
-                let truthy = match args[0] {
+                let truthy = match *self.pop() {
                     Object::Boolean(b) => b,
                     Object::Null => false,
                     _ => true,
@@ -138,19 +135,13 @@ impl Vm {
                 self.push(self.globals[idx as usize].clone());
             }
             ControlOpcode::SetGlobal => {
-                // Just need the index of the single element.
-                let (start, _) = self.pop_n(1);
-
                 // Register a new global with the operand's specified index.
                 let ctx = self.frames.current_mut();
                 let idx = ctx.read_u16()?;
-                self.globals[idx as usize] = self.stack[start].clone();
+                self.globals[idx as usize] = self.pop().clone();
             }
             ControlOpcode::Call => {
-                // Just need the index of the single element.
-                let (start, _) = self.pop_n(1);
-                let obj = &self.stack[start];
-
+                let obj = self.pop();
                 let func = match obj {
                     Object::CompiledFunction(f) => f,
                     _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj.clone()))),
@@ -163,13 +154,12 @@ impl Vm {
                 self.frames.push(frame);
             }
             ControlOpcode::ReturnValue => {
-                let (i, _) = self.pop_n(1);
-                let ret = self.stack[i].clone();
+                let ret = self.pop().clone();
 
                 let f = self.frames.pop();
                 self.sp = f.fp;
 
-                // NB: the book specifies an extra pop_n(1) here and in Return,
+                // NB: the book specifies an extra pop here and in Return,
                 // but it seems that our VM is already popping the function off
                 // the stack. Perhaps this is a slight error in the compiler,
                 // but it seems to work.
@@ -183,20 +173,15 @@ impl Vm {
                 self.push(Object::Null);
             }
             ControlOpcode::SetPointer => {
-                // Just need the index of the single element.
-                let (i, _) = self.pop_n(1);
-
                 // Overwrite the element at the specified index in the heap.
                 let idx = self.frames.current_mut().read_u16()?;
-                self.heap[idx as usize] = self.stack[i].clone();
+                self.heap[idx as usize] = self.pop().clone();
             }
             ControlOpcode::SetLocal => {
                 let f = self.frames.current_mut();
                 let i = f.fp + f.read_u8()? as usize;
 
-                let (start, _) = self.pop_n(1);
-
-                self.stack[i] = self.stack[start].clone();
+                self.stack[i] = self.pop().clone();
             }
             ControlOpcode::GetLocal => {
                 let f = self.frames.current_mut();
@@ -211,11 +196,10 @@ impl Vm {
 
     /// Executes a unary operation against one object.
     fn unary_op(&mut self, op: UnaryOpcode) -> Result<()> {
-        let (start, end) = self.pop_n(1);
-        let args = &self.stack[start..end];
+        let obj = self.pop().clone();
 
-        let out = match (op, &args[0]) {
-            (UnaryOpcode::Not, _) => match args[0] {
+        let out = match (op, &obj) {
+            (UnaryOpcode::Not, _) => match &obj {
                 // Invert booleans directly.
                 Object::Boolean(b) => Object::Boolean(!b),
                 // !null is truthy.
@@ -237,7 +221,7 @@ impl Vm {
                 return Err(Error::bad_arguments(
                     BadArgumentKind::UnaryOperatorUnsupported,
                     Opcode::Unary(op),
-                    &args,
+                    &[obj.clone()],
                 ));
             }
         };
@@ -424,5 +408,11 @@ impl Vm {
         self.sp -= n;
 
         (start, end)
+    }
+
+    /// Pops off and returns a reference to the top element of the stack.
+    fn pop(&mut self) -> &Object {
+        let (i, _) = self.pop_n(1);
+        &self.stack[i]
     }
 }
