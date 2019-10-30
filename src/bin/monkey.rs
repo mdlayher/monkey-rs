@@ -2,7 +2,6 @@ extern crate getopts;
 extern crate mdl_monkey;
 
 use mdl_monkey::ast;
-use mdl_monkey::code;
 use mdl_monkey::compiler::Compiler;
 use mdl_monkey::evaluator;
 use mdl_monkey::lexer::Lexer;
@@ -116,14 +115,7 @@ fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
     let bc = c.bytecode();
 
     if print_bytecode {
-        let ins = code::Instructions::parse(&bc.instructions).map_err(|err| err.to_string())?;
-
-        println!("constants:");
-        for (i, con) in bc.constants.iter().enumerate() {
-            println!("{:02}: {}", i, con);
-        }
-
-        println!("\nbytecode:\n\n{}", ins);
+        println!("{}", bc);
     }
 
     let mut vm = Vm::new(bc);

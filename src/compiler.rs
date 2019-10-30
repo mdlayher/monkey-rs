@@ -95,10 +95,16 @@ impl Compiler {
                         self.emit(Opcode::Control(Return), vec![])?;
                     }
 
+                    // Retrieve the number of local definitions to pass along
+                    // as part of the function's metadata.
+                    let num_locals = self.symbols.borrow().num_definitions;
                     let instructions = self.leave_scope();
 
                     let oper = vec![self.add_constant(Object::CompiledFunction(
-                        object::CompiledFunction { instructions },
+                        object::CompiledFunction {
+                            instructions,
+                            num_locals,
+                        },
                     ))];
                     self.emit(Opcode::Control(Constant), oper)?;
                 }
@@ -425,6 +431,22 @@ impl Compiler {
 pub struct Bytecode {
     pub instructions: Vec<u8>,
     pub constants: Vec<Object>,
+}
+
+impl fmt::Display for Bytecode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "constants:\n")?;
+        for (i, con) in self.constants.iter().enumerate() {
+            writeln!(f, "{:02}: {}", i, con)?;
+        }
+
+        writeln!(f, "bytecode:\n")?;
+        write!(
+            f,
+            "{}",
+            code::Instructions::parse(&self.instructions).expect("instructions must parse")
+        )
+    }
 }
 
 /// A table that can be used to define and resolve `Symbols`.

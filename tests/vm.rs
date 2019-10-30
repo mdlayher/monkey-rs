@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use mdl_monkey::{
     ast,
-    code::{self, BinaryOpcode, Opcode, UnaryOpcode},
+    code::{BinaryOpcode, Opcode, UnaryOpcode},
     compiler, lexer,
     object::{self, Hashable, Object},
     parser,
@@ -270,6 +270,31 @@ fn vm_run_ok() {
             ",
             Object::Integer(2),
         ),
+        (
+            "
+                let one = fn() {
+                    let one = 1;
+                    one
+                };
+                one();
+            ",
+            Object::Integer(1),
+        ),
+        (
+            "
+                let seed = 50;
+                let one = fn() {
+                    let num = 1;
+                    seed - num;
+                };
+                let two = fn() {
+                    let num = 2;
+                    seed - num;
+                };
+                one() + two();
+            ",
+            Object::Integer(97),
+        ),
     ];
 
     for (input, want) in &tests {
@@ -280,11 +305,10 @@ fn vm_run_ok() {
         assert_eq!(
             *want,
             *vm.last_popped(),
-            "\ninput: {}, incorrect value removed from stack\n\nstack: {:?}\n\nconstants: {:?}\n\nbytecode:\n\n{}",
+            "\ninput: {}, incorrect value removed from stack\n\nstack: {:?}\n\nbytecode:\n\n{}",
             input,
             vm.dump_stack(),
-            bc.constants,
-            code::Instructions::parse(&bc.instructions).expect("must parse"),
+            bc,
         );
     }
 }

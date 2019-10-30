@@ -292,7 +292,6 @@ impl Instructions {
                 idx += w as usize;
                 match w {
                     Width::One => operands.push(c.read_u8().map_err(Error::Io)? as usize),
-
                     Width::Two => {
                         operands.push(c.read_u16::<BigEndian>().map_err(Error::Io)? as usize)
                     }

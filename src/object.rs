@@ -1,7 +1,7 @@
 //! Objects produced when evaluating the Monkey programming language from
 //! <https://interpreterbook.com/>.
 
-use crate::ast;
+use crate::{ast, code};
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryFrom;
@@ -373,11 +373,17 @@ impl fmt::Display for Set {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CompiledFunction {
     pub instructions: Vec<u8>,
+    pub num_locals: usize,
 }
 
 impl fmt::Display for CompiledFunction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "compiled_fn({:?})", self.instructions)
+        write!(
+            f,
+            "compiled function: locals: {}\n  - instructions:\n{}",
+            self.num_locals,
+            code::Instructions::parse(&self.instructions).expect("must parse"),
+        )
     }
 }
 

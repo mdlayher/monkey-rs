@@ -551,6 +551,7 @@ fn compiler_ok() {
                         BinaryOpcode::Add as u8,
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -580,6 +581,7 @@ fn compiler_ok() {
                         BinaryOpcode::Add as u8,
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -608,6 +610,7 @@ fn compiler_ok() {
                         0x01,
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -622,6 +625,7 @@ fn compiler_ok() {
             ],
             vec![Object::CompiledFunction(object::CompiledFunction {
                 instructions: vec![ControlOpcode::Return as u8],
+                num_locals: 0,
             })],
         ),
         (
@@ -646,6 +650,7 @@ fn compiler_ok() {
                         // return
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -678,6 +683,7 @@ fn compiler_ok() {
                         // return
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -754,6 +760,7 @@ fn compiler_ok() {
                         0x00,
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 0,
                 }),
             ],
         ),
@@ -786,6 +793,7 @@ fn compiler_ok() {
                         0x00,
                         ControlOpcode::ReturnValue as u8,
                     ],
+                    num_locals: 1,
                 }),
             ],
         ),

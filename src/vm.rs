@@ -37,6 +37,18 @@ impl Vm {
 
     /// Creates a new `Vm` with the specified initial stack size.
     pub fn with_stack_size(bc: compiler::Bytecode, n: usize) -> Self {
+        // Create a main function and associated frame with a frame pointer
+        // value of 0.
+        let main = Frame::new(
+            object::CompiledFunction {
+                instructions: bc.instructions,
+                // main has no local bindings.
+                num_locals: 0,
+            },
+            // Stack/frame pointer starts at 0 for main.
+            0,
+        );
+
         Vm {
             stack: vec![Object::Null; n],
             sp: 0,
@@ -44,7 +56,7 @@ impl Vm {
             globals: vec![Object::Null; 64],
             consts: bc.constants,
             heap: vec![],
-            frames: FrameStack(vec![Frame::new(bc.instructions)]),
+            frames: FrameStack(vec![main]),
         }
     }
 
@@ -144,19 +156,23 @@ impl Vm {
                 let (start, _) = self.pop_n(1);
                 let obj = &self.stack[start];
 
-                let func = if let Object::CompiledFunction(f) = obj {
-                    f
-                } else {
-                    return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj.clone())));
+                let func = match obj {
+                    Object::CompiledFunction(f) => f,
+                    _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj.clone()))),
                 };
 
-                self.frames.push(Frame::new(func.instructions.to_vec()));
+                // Push a new frame and set its frame pointer to the current
+                // stack pointer.
+                let frame = Frame::new(func.clone(), self.sp);
+                self.sp = frame.fp + frame.num_locals;
+                self.frames.push(frame);
             }
             ControlOpcode::ReturnValue => {
                 let (i, _) = self.pop_n(1);
                 let ret = self.stack[i].clone();
 
-                self.frames.pop();
+                let f = self.frames.pop();
+                self.sp = f.fp;
 
                 // NB: the book specifies an extra pop_n(1) here and in Return,
                 // but it seems that our VM is already popping the function off
@@ -165,7 +181,8 @@ impl Vm {
                 self.push(ret);
             }
             ControlOpcode::Return => {
-                self.frames.pop();
+                let f = self.frames.pop();
+                self.sp = f.fp;
 
                 // NB: see above note in ReturnValue.
                 self.push(Object::Null);
@@ -176,9 +193,23 @@ impl Vm {
 
                 // Overwrite the element at the specified index in the heap.
                 let idx = self.frames.current_mut().read_u16()?;
+                dbg!(&self.heap);
                 self.heap[idx as usize] = self.stack[i].clone();
             }
-            ControlOpcode::GetLocal | ControlOpcode::SetLocal => unimplemented!(),
+            ControlOpcode::SetLocal => {
+                let f = self.frames.current_mut();
+                let i = f.fp + f.read_u8()? as usize;
+
+                let (start, _) = self.pop_n(1);
+
+                self.stack[i] = self.stack[start].clone();
+            }
+            ControlOpcode::GetLocal => {
+                let f = self.frames.current_mut();
+                let i = f.fp + f.read_u8()? as usize;
+
+                self.push(self.stack[i].clone());
+            }
         };
 
         Ok(())
@@ -614,14 +645,18 @@ impl FrameStack {
 struct Frame {
     ins_len: u64,
     c: io::Cursor<Vec<u8>>,
+    num_locals: usize,
+    fp: usize,
 }
 
 impl Frame {
-    /// Produces a `Frame` from input `compiler::Bytecode`.
-    fn new(instructions: Vec<u8>) -> Self {
+    /// Produces a `Frame` from an input `object::CompiledFunction`.
+    fn new(func: object::CompiledFunction, fp: usize) -> Self {
         Frame {
-            ins_len: instructions.len() as u64,
-            c: io::Cursor::new(instructions),
+            ins_len: func.instructions.len() as u64,
+            c: io::Cursor::new(func.instructions),
+            num_locals: func.num_locals,
+            fp,
         }
     }
 
