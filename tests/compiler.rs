@@ -1,5 +1,7 @@
 extern crate mdl_monkey;
 
+use std::{cell::RefCell, rc::Rc};
+
 use mdl_monkey::{
     ast,
     code::*,
@@ -725,6 +727,68 @@ fn compiler_ok() {
             ],
             vec![Object::Integer(1), Object::Integer(2)],
         ),
+        (
+            "let num = 55; fn() { num }",
+            vec![
+                // 55
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x00,
+                // num binding
+                ControlOpcode::SetGlobal as u8,
+                0x00,
+                0x00,
+                // fn
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(55),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // num binding
+                        ControlOpcode::GetGlobal as u8,
+                        0x00,
+                        0x00,
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
+        (
+            "
+                fn() {
+                    let num = 55;
+                    num
+                }
+            ",
+            vec![
+                // fn
+                ControlOpcode::Constant as u8,
+                0x00,
+                0x01,
+                ControlOpcode::Pop as u8,
+            ],
+            vec![
+                Object::Integer(55),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // 55
+                        ControlOpcode::Constant as u8,
+                        0x00,
+                        0x00,
+                        // num bindings
+                        ControlOpcode::SetLocal as u8,
+                        0x00,
+                        ControlOpcode::GetLocal as u8,
+                        0x00,
+                        ControlOpcode::ReturnValue as u8,
+                    ],
+                }),
+            ],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
@@ -737,7 +801,7 @@ fn compiler_ok() {
 }
 
 #[test]
-fn symbol_table_ok() {
+fn symbol_table_global_ok() {
     let mut st = SymbolTable::default();
     st.define("a".to_string());
 
@@ -759,13 +823,54 @@ fn symbol_table_ok() {
     ];
 
     for (name, symbol) in &tests {
-        let idx = st.define(name.to_string());
-        let s = st.resolve(name).expect("a symbol should be defined");
+        let defined = st.define(name.to_string());
+        let resolved = st.resolve(name).expect("a symbol should be defined");
 
-        assert_eq!(idx, s.index);
-        assert_eq!(s, symbol);
+        assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
+        assert_eq!(resolved, *symbol, "test case symbol mismatch");
 
         st.resolve(&"a").expect("a should always be defined");
+    }
+}
+
+#[test]
+fn symbol_table_local_ok() {
+    let global = Rc::new(RefCell::new(SymbolTable::default()));
+    global.borrow_mut().define("a".to_string());
+
+    let local = Rc::new(RefCell::new(SymbolTable::new_enclosed(global)));
+    local.borrow_mut().define("b".to_string());
+
+    let mut nested = SymbolTable::new_enclosed(local);
+    nested.define("c".to_string());
+
+    let tests = vec![
+        (
+            "b",
+            Symbol {
+                scope: Scope::Local,
+                index: 1,
+            },
+        ),
+        (
+            "c",
+            Symbol {
+                scope: Scope::Local,
+                index: 2,
+            },
+        ),
+    ];
+
+    for (name, symbol) in &tests {
+        let defined = nested.define(name.to_string());
+        let resolved = nested.resolve(name).expect("a symbol should be defined");
+
+        assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
+        assert_eq!(resolved, *symbol, "test case symbol mismatch");
+
+        let gsym = nested.resolve(&"a").expect("a should always be defined");
+        assert_eq!(0, gsym.index);
+        assert_eq!(Scope::Global, gsym.scope);
     }
 }
 

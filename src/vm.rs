@@ -178,6 +178,7 @@ impl Vm {
                 let idx = self.frames.current_mut().read_u16()?;
                 self.heap[idx as usize] = self.stack[i].clone();
             }
+            ControlOpcode::GetLocal | ControlOpcode::SetLocal => unimplemented!(),
         };
 
         Ok(())

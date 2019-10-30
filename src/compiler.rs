@@ -1,8 +1,7 @@
 //! A compiler for the Monkey programming language from
 //! <https://compilerbook.com/>.
 
-use std::collections::HashMap;
-use std::{error, fmt, mem, result};
+use std::{cell::RefCell, collections::HashMap, error, fmt, mem, rc::Rc, result};
 
 use crate::{
     ast,
@@ -14,8 +13,12 @@ use crate::{
 #[derive(Default)]
 pub struct Compiler {
     constants: Vec<Object>,
-    symbols: SymbolTable,
     scopes: Vec<CompilationScope>,
+
+    // The current and optional outer symbol tables, used when entering and
+    // leaving scopes.
+    symbols: Rc<RefCell<SymbolTable>>,
+    symbols_outer: Rc<RefCell<SymbolTable>>,
 }
 
 #[derive(Default)]
@@ -33,10 +36,13 @@ struct Emitted {
 
 impl Compiler {
     pub fn new() -> Self {
-        // Initialize and enter the "main" scope.
-        let mut c = Compiler::default();
-        c.enter_scope();
-        c
+        // Initialize the compiler and enter the "main" scope. Do not call
+        // the enter_scope method to avoid creating an immediate outer
+        // symbol table.
+        Self {
+            scopes: vec![CompilationScope::default()],
+            ..Self::default()
+        }
     }
 
     pub fn compile(&mut self, node: ast::Node) -> Result<()> {
@@ -114,12 +120,16 @@ impl Compiler {
                     // it is undefined.
                     let s = self
                         .symbols
+                        .borrow()
                         .resolve(&id)
                         .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
 
-                    // End the borrow of s by just taking the index we need.
-                    let index = s.index;
-                    self.emit(Opcode::Control(GetGlobal), vec![index])?;
+                    let op = match s.scope {
+                        Scope::Global => GetGlobal,
+                        Scope::Local => GetLocal,
+                    };
+
+                    self.emit(Opcode::Control(op), vec![s.index])?;
                 }
                 ast::Expression::If(i) => self.compile_if_expression(i)?,
                 ast::Expression::Index(i) => {
@@ -173,9 +183,15 @@ impl Compiler {
                 ast::Statement::Let(l) => {
                     self.compile(ast::Node::Expression(l.value))?;
 
-                    // Define this identifier with an index.
-                    let idx = self.symbols.define(l.name);
-                    self.emit(Opcode::Control(SetGlobal), vec![idx])?;
+                    // Define this identifier and emit it with the appropriate
+                    // scope.
+                    let s = self.symbols.borrow_mut().define(l.name);
+                    let op = match s.scope {
+                        Scope::Global => SetGlobal,
+                        Scope::Local => SetLocal,
+                    };
+
+                    self.emit(Opcode::Control(op), vec![s.index])?;
                 }
                 ast::Statement::LetDereference(l) => {
                     self.compile(ast::Node::Expression(l.value))?;
@@ -187,6 +203,7 @@ impl Compiler {
                     // pointers at this point.
                     let idx = self
                         .symbols
+                        .borrow()
                         .resolve(&l.name)
                         .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(l.name)))?
                         .index;
@@ -380,9 +397,21 @@ impl Compiler {
 
     fn enter_scope(&mut self) {
         self.scopes.push(CompilationScope::default());
+
+        // Keep track of the outer symbol table so we can swap it back in place
+        // when we leave this scope.
+        self.symbols_outer = Rc::clone(&self.symbols);
+
+        // Create an enclosed symbol table which will reference the current
+        // one for symbols outside its own scope.
+        let s = SymbolTable::new_enclosed(Rc::clone(&self.symbols));
+        self.symbols = Rc::new(RefCell::new(s));
     }
 
     fn leave_scope(&mut self) -> Vec<u8> {
+        // Restore the previous symbol table from the outer scope.
+        mem::swap(&mut self.symbols, &mut self.symbols_outer);
+
         let scope = self
             .scopes
             .pop()
@@ -401,30 +430,49 @@ pub struct Bytecode {
 /// A table that can be used to define and resolve `Symbols`.
 #[derive(Debug, Default)]
 pub struct SymbolTable {
-    pub store: HashMap<String, Symbol>,
-    pub num_definitions: usize,
+    store: HashMap<String, Symbol>,
+    num_definitions: usize,
+    outer: Option<Rc<RefCell<SymbolTable>>>,
 }
 
 impl SymbolTable {
-    /// Defines a new `Symbol` by name.
-    pub fn define(&mut self, name: String) -> usize {
-        let index = self.num_definitions;
-        self.store.insert(
-            name,
-            Symbol {
-                scope: Scope::Global,
-                index,
-            },
-        );
+    /// Creates a new `SymbolTable` that can also reference symbols defined by
+    /// the `outer` table.
+    pub fn new_enclosed(outer: Rc<RefCell<Self>>) -> Self {
+        Self {
+            outer: Some(outer),
+            ..Self::default()
+        }
+    }
 
+    /// Defines a new `Symbol` by name.
+    pub fn define(&mut self, name: String) -> Symbol {
+        let scope = match self.outer {
+            Some(_) => Scope::Local,
+            None => Scope::Global,
+        };
+
+        let s = Symbol {
+            scope,
+            index: self.num_definitions,
+        };
         self.num_definitions += 1;
-        index
+
+        self.store.insert(name, s.clone());
+        s
     }
 
     /// Resolves a `Symbol` by its name and returns whether or not it
     /// was defined.
-    pub fn resolve(&self, name: &str) -> Option<&Symbol> {
-        self.store.get(name)
+    pub fn resolve(&self, name: &str) -> Option<Symbol> {
+        match (self.store.get(name), &self.outer) {
+            // We found a binding in this symbol table.
+            (Some(s), _) => Some(s.clone()),
+            // We did not find a binding; try the outer symbol table.
+            (None, Some(outer)) => outer.borrow().resolve(name),
+            // We found no binding and there is no outer symbol table.
+            (None, _) => None,
+        }
     }
 }
 
@@ -439,6 +487,7 @@ pub struct Symbol {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Scope {
     Global,
+    Local,
 }
 
 /// A Result type specialized use with for an Error.

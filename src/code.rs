@@ -34,6 +34,8 @@ pub enum ControlOpcode {
     ReturnValue = 0x0a,
     Return = 0x0b,
     SetPointer = 0x0c,
+    GetLocal = 0x0d,
+    SetLocal = 0x0e,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -104,6 +106,8 @@ impl fmt::Display for ControlOpcode {
             Self::ReturnValue => write!(f, "RETURN VALUE"),
             Self::Return => write!(f, "RETURN"),
             Self::SetPointer => write!(f, "SET POINTER"),
+            Self::GetLocal => write!(f, "GET LOCAL"),
+            Self::SetLocal => write!(f, "SET LOCAL"),
         }
     }
 }
@@ -125,6 +129,8 @@ impl From<u8> for ControlOpcode {
             0x0a => ControlOpcode::ReturnValue,
             0x0b => ControlOpcode::Return,
             0x0c => ControlOpcode::SetPointer,
+            0x0d => ControlOpcode::GetLocal,
+            0x0e => ControlOpcode::SetLocal,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -248,6 +254,7 @@ pub fn make(op: Opcode, operands: &[usize]) -> Result<Vec<u8>> {
     // Write the instruction into the vector.
     for (oper, width) in operands.iter().zip(def.operand_widths.iter()) {
         match width {
+            Width::One => buf.write_u8(*oper as u8).map_err(Error::Io)?,
             Width::Two => buf
                 .write_u16::<BigEndian>(*oper as u16)
                 .map_err(Error::Io)?,
@@ -284,6 +291,8 @@ impl Instructions {
             for w in def.operand_widths {
                 idx += w as usize;
                 match w {
+                    Width::One => operands.push(c.read_u8().map_err(Error::Io)? as usize),
+
                     Width::Two => {
                         operands.push(c.read_u16::<BigEndian>().map_err(Error::Io)? as usize)
                     }
@@ -309,6 +318,7 @@ impl fmt::Display for Instructions {
 /// The number of bytes required to hold an operand.
 #[derive(Clone, Copy, Debug)]
 enum Width {
+    One = 1,
     Two = 2,
 }
 
@@ -375,6 +385,14 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             ControlOpcode::SetPointer => Definition {
                 name: "SetPointer",
                 operand_widths: vec![Width::Two],
+            },
+            ControlOpcode::GetLocal => Definition {
+                name: "GetLocal",
+                operand_widths: vec![Width::One],
+            },
+            ControlOpcode::SetLocal => Definition {
+                name: "SetLocal",
+                operand_widths: vec![Width::One],
             },
         },
         Opcode::Unary(u) => match u {
