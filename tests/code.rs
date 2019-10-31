@@ -77,6 +77,11 @@ fn code_make_parse_ok() {
             vec![],
             vec![BinaryOpcode::GreaterThan as u8],
         ),
+        (
+            Opcode::Control(ControlOpcode::Closure),
+            vec![65534, 255],
+            vec![ControlOpcode::Closure as u8, 0xff, 0xfe, 0xff],
+        ),
     ];
 
     for (op, operands, want) in &tests {

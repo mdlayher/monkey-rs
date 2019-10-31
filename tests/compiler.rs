@@ -524,9 +524,10 @@ fn compiler_ok() {
             "fn() { return 5 + 10 }",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x02,
+                0x00,
                 Pop as u8,
             ],
             vec![
@@ -555,9 +556,10 @@ fn compiler_ok() {
             "fn() { 5 + 10 }",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x02,
+                0x00,
                 Pop as u8,
             ],
             vec![
@@ -586,9 +588,10 @@ fn compiler_ok() {
             "fn() { 1; 2 }",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x02,
+                0x00,
                 Pop as u8,
             ],
             vec![
@@ -616,7 +619,8 @@ fn compiler_ok() {
             "fn() { }",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
+                0x00,
                 0x00,
                 0x00,
                 Pop as u8,
@@ -631,9 +635,10 @@ fn compiler_ok() {
             "fn() { 24 }();",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x01,
+                0x00,
                 // call
                 Call as u8,
                 0x00,
@@ -659,9 +664,10 @@ fn compiler_ok() {
             "let noArg = fn() { 24 }; noArg();",
             vec![
                 // function
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x01,
+                0x00,
                 // noArg bindings
                 SetGlobal as u8,
                 0x00,
@@ -748,9 +754,10 @@ fn compiler_ok() {
                 0x00,
                 0x00,
                 // fn
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x01,
+                0x00,
                 Pop as u8,
             ],
             vec![
@@ -777,9 +784,10 @@ fn compiler_ok() {
             ",
             vec![
                 // fn
-                Constant as u8,
+                Closure as u8,
                 0x00,
                 0x01,
+                0x00,
                 Pop as u8,
             ],
             vec![
@@ -809,7 +817,8 @@ fn compiler_ok() {
             ",
             vec![
                 // fn
-                Constant as u8,
+                Closure as u8,
+                0x00,
                 0x00,
                 0x00,
                 // one bindings
@@ -848,7 +857,8 @@ fn compiler_ok() {
             ",
             vec![
                 // fn
-                Constant as u8,
+                Closure as u8,
+                0x00,
                 0x00,
                 0x00,
                 // many bindings
@@ -930,6 +940,144 @@ fn compiler_ok() {
                 Pop as u8,
             ],
             vec![Object::Integer(1)],
+        ),
+        (
+            "
+                fn(a) {
+                    fn(b) {
+                        a + b
+                    }
+                }
+            ",
+            vec![Closure as u8, 0x00, 0x01, 0x00, Pop as u8],
+            vec![
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // capture a
+                        GetFree as u8,
+                        0x00,
+                        // get b
+                        GetLocal as u8,
+                        0x00,
+                        // add both
+                        Add as u8,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                    num_parameters: 1,
+                }),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // get a
+                        GetLocal as u8,
+                        0x00,
+                        // func
+                        Closure as u8,
+                        0x00,
+                        0x00,
+                        0x01,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                    num_parameters: 1,
+                }),
+            ],
+        ),
+        (
+            "
+                let global = 55;
+                fn() {
+                    let a = 66;
+                    fn() {
+                        let b = 77;
+                        fn() {
+                            let c = 88;
+                            global + a + b + c;
+                        }
+                    }
+                }
+            ",
+            vec![
+                Constant as u8,
+                0x00,
+                0x00,
+                SetGlobal as u8,
+                0x00,
+                0x00,
+                Closure as u8,
+                0x00,
+                0x06,
+                0x00,
+                Pop as u8,
+            ],
+            vec![
+                Object::Integer(55),
+                Object::Integer(66),
+                Object::Integer(77),
+                Object::Integer(88),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        Constant as u8,
+                        0x00,
+                        0x03,
+                        SetLocal as u8,
+                        0x00,
+                        GetGlobal as u8,
+                        0x00,
+                        0x00,
+                        GetFree as u8,
+                        0x00,
+                        Add as u8,
+                        GetFree as u8,
+                        0x01,
+                        Add as u8,
+                        GetLocal as u8,
+                        0x00,
+                        Add as u8,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                    num_parameters: 0,
+                }),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        Constant as u8,
+                        0x00,
+                        0x02,
+                        SetLocal as u8,
+                        0x00,
+                        GetFree as u8,
+                        0x00,
+                        GetLocal as u8,
+                        0x00,
+                        Closure as u8,
+                        0x00,
+                        0x04,
+                        0x02,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                    num_parameters: 0,
+                }),
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        Constant as u8,
+                        0x00,
+                        0x01,
+                        SetLocal as u8,
+                        0x00,
+                        GetLocal as u8,
+                        0x00,
+                        Closure as u8,
+                        0x00,
+                        0x05,
+                        0x01,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                    num_parameters: 0,
+                }),
+            ],
         ),
     ];
 

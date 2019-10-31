@@ -35,11 +35,15 @@ impl Vm {
         // Create a main function and associated frame with a frame pointer
         // value of 0.
         let main = Frame::new(
-            object::CompiledFunction {
-                instructions: bc.instructions,
-                // main has no local bindings and no parameters.
-                num_locals: 0,
-                num_parameters: 0,
+            object::Closure {
+                func: object::CompiledFunction {
+                    instructions: bc.instructions,
+                    // main has no local bindings and no parameters.
+                    num_locals: 0,
+                    num_parameters: 0,
+                },
+                // main has no free variables.
+                free: vec![],
             },
             // Stack/frame pointer starts at 0 for main.
             0,
@@ -144,12 +148,12 @@ impl Vm {
             ControlOpcode::Call => {
                 let num_args = self.frames.current_mut().read_u8()? as usize;
 
-                // Take the compiled function or built-in at the correct offset
+                // Take the compiled closure or built-in at the correct offset
                 // after its arguments and handle it.
                 let obj = self.stack[self.sp - 1 - num_args].clone();
                 match obj {
                     Object::Builtin(b) => self.call_builtin(b, num_args)?,
-                    Object::CompiledFunction(f) => self.call_function(f, num_args)?,
+                    Object::Closure(c) => self.call_closure(c, num_args)?,
                     _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj))),
                 };
             }
@@ -186,6 +190,20 @@ impl Vm {
                 let i = self.frames.current_mut().read_u8()?;
                 self.push(Object::Builtin(object::Builtin::from(i)));
             }
+            ControlOpcode::Closure => {
+                let ctx = self.frames.current_mut();
+                let idx = ctx.read_u16()?;
+                let _free = ctx.read_u8()?;
+
+                let obj = &self.consts[idx as usize];
+                let func = match obj {
+                    Object::CompiledFunction(f) => f.clone(),
+                    _ => panic!("not a compiled function object: {:?}", obj),
+                };
+
+                self.push(Object::Closure(object::Closure { func, free: vec![] }));
+            }
+            ControlOpcode::GetFree => unimplemented!(),
         };
 
         Ok(())
@@ -386,19 +404,19 @@ impl Vm {
         Ok(())
     }
 
-    /// Executes a call operation on a user-defined function.
-    fn call_function(&mut self, func: object::CompiledFunction, num_args: usize) -> Result<()> {
+    /// Executes a call operation on a user-defined function or closure.
+    fn call_closure(&mut self, cl: object::Closure, num_args: usize) -> Result<()> {
         // Ensure the user passed the right number of parameters.
-        if num_args != func.num_parameters {
+        if num_args != cl.func.num_parameters {
             return Err(Error::Runtime(ErrorKind::WrongNumberArguments {
-                want: func.num_parameters,
+                want: cl.func.num_parameters,
                 got: num_args,
             }));
         }
 
         // Push a new frame and set its frame pointer to the current
         // stack pointer.
-        let frame = Frame::new(func, self.sp - num_args);
+        let frame = Frame::new(cl, self.sp - num_args);
         self.sp = frame.fp + frame.num_locals;
         self.frames.push(frame);
 

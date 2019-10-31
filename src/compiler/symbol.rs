@@ -8,6 +8,7 @@ use crate::object;
 #[derive(Debug, Default)]
 pub struct SymbolTable {
     pub num_definitions: usize,
+    pub free: Vec<Symbol>,
     store: HashMap<String, Symbol>,
     outer: Option<Rc<RefCell<SymbolTable>>>,
 }
@@ -28,12 +29,27 @@ impl SymbolTable {
         let name = format!("{}", b);
 
         self.store.insert(
-            name,
+            name.clone(),
             Symbol {
+                name,
                 scope: Scope::Builtin,
                 index,
             },
         );
+    }
+
+    /// Defines a free symbol.
+    pub fn define_free(&mut self, orig: Symbol) -> Symbol {
+        self.free.push(orig.clone());
+
+        let s = Symbol {
+            name: orig.name.clone(),
+            scope: Scope::Free,
+            index: self.free.len() - 1,
+        };
+
+        self.store.insert(orig.name, s.clone());
+        s
     }
 
     /// Defines a new `Symbol` by name.
@@ -44,6 +60,7 @@ impl SymbolTable {
         };
 
         let s = Symbol {
+            name: name.clone(),
             scope,
             index: self.num_definitions,
         };
@@ -55,13 +72,25 @@ impl SymbolTable {
 
     /// Resolves a `Symbol` by its name and returns whether or not it
     /// was defined.
-    pub fn resolve(&self, name: &str) -> Option<Symbol> {
-        match (self.store.get(name), &self.outer) {
-            // We found a binding in this symbol table.
-            (Some(s), _) => Some(s.clone()),
-            // We did not find a binding; try the outer symbol table.
-            (None, Some(outer)) => outer.borrow().resolve(name),
-            // We found no binding and there is no outer symbol table.
+    pub fn resolve(&mut self, name: &str) -> Option<Symbol> {
+        if let Some(s) = self.store.get(name) {
+            return Some(s.clone());
+        }
+
+        // Ensure self.outer exists before trying to resolve through it.
+        let outer = &self.outer.as_ref()?;
+
+        let (obj, free) = match outer.borrow_mut().resolve(name) {
+            Some(s) => match s.scope {
+                Scope::Builtin | Scope::Global => (Some(s.clone()), false),
+                _ => (Some(s.clone()), true),
+            },
+            None => (None, false),
+        };
+
+        match (obj, free) {
+            (Some(s), true) => Some(self.define_free(s)),
+            (Some(s), false) => Some(s),
             (None, _) => None,
         }
     }
@@ -70,6 +99,7 @@ impl SymbolTable {
 /// A symbol definition.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Symbol {
+    pub name: String,
     pub scope: Scope,
     pub index: usize,
 }
@@ -80,6 +110,7 @@ pub enum Scope {
     Builtin,
     Global,
     Local,
+    Free,
 }
 
 #[cfg(test)]
@@ -97,6 +128,7 @@ mod tests {
             (
                 "b",
                 Symbol {
+                    name: "b".to_string(),
                     scope: Scope::Global,
                     index: 1,
                 },
@@ -104,6 +136,7 @@ mod tests {
             (
                 "c",
                 Symbol {
+                    name: "c".to_string(),
                     scope: Scope::Global,
                     index: 2,
                 },
@@ -138,6 +171,7 @@ mod tests {
             (
                 "b",
                 Symbol {
+                    name: "b".to_string(),
                     scope: Scope::Local,
                     index: 1,
                 },
@@ -145,6 +179,7 @@ mod tests {
             (
                 "c",
                 Symbol {
+                    name: "c".to_string(),
                     scope: Scope::Local,
                     index: 2,
                 },

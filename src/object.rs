@@ -30,6 +30,7 @@ pub enum Object {
     Set(Set),
     CompiledFunction(CompiledFunction),
     Pointer(usize),
+    Closure(Closure),
 }
 
 impl fmt::Display for Object {
@@ -48,6 +49,7 @@ impl fmt::Display for Object {
             Object::Set(s) => s.fmt(f),
             Object::CompiledFunction(func) => func.fmt(f),
             Object::Pointer(p) => write!(f, "{:#06x}", p),
+            Object::Closure(c) => c.fmt(f),
         }
     }
 }
@@ -412,6 +414,23 @@ impl fmt::Display for CompiledFunction {
             self.num_locals,
             self.num_parameters,
             code::Instructions::parse(&self.instructions).expect("must parse"),
+        )
+    }
+}
+
+/// The object representation of a Monkey closure.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Closure {
+    pub func: CompiledFunction,
+    pub free: Vec<Object>,
+}
+
+impl fmt::Display for Closure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "closure:\n  func: {}\n  free: {:?}",
+            self.func, self.free,
         )
     }
 }

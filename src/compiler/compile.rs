@@ -133,16 +133,37 @@ impl Compiler {
                     // Retrieve the number of local definitions to pass along
                     // as part of the function's metadata.
                     let num_locals = self.symbols.borrow().num_definitions;
+
+                    // Load the free symbols from the current symbol table
+                    // to handle closures, _before_ we leave the current scope.
+                    let free_symbols = {
+                        let mut table = self.symbols.borrow_mut();
+                        // Now that we've taken the free symbols, clear the
+                        // vector that stores them for future calls.
+                        let out = table.free.to_vec();
+                        table.free.clear();
+                        out
+                    };
+
                     let instructions = self.leave_scope();
 
-                    let oper = vec![self.add_constant(Object::CompiledFunction(
-                        object::CompiledFunction {
+                    let num_free = free_symbols.len();
+                    for s in free_symbols {
+                        self.load_symbol(s)?;
+                    }
+
+                    let oper = vec![
+                        // Add the function to the constants pool and take its
+                        // index as the first operand.
+                        self.add_constant(Object::CompiledFunction(object::CompiledFunction {
                             instructions,
                             num_locals,
                             num_parameters: f.parameters.len(),
-                        },
-                    ))];
-                    self.emit(Opcode::Control(Constant), oper)?;
+                        })),
+                        // And then emit the number of free variables.
+                        num_free,
+                    ];
+                    self.emit(Opcode::Control(Closure), oper)?;
                 }
                 ast::Expression::Hash(h) => {
                     // Compile each key/value pair in order.
@@ -162,17 +183,11 @@ impl Compiler {
                     // it is undefined.
                     let s = self
                         .symbols
-                        .borrow()
+                        .borrow_mut()
                         .resolve(&id)
                         .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
 
-                    let op = match s.scope {
-                        Scope::Builtin => GetBuiltin,
-                        Scope::Global => GetGlobal,
-                        Scope::Local => GetLocal,
-                    };
-
-                    self.emit(Opcode::Control(op), vec![s.index])?;
+                    self.load_symbol(s)?;
                 }
                 ast::Expression::If(i) => self.compile_if_expression(i)?,
                 ast::Expression::Index(i) => {
@@ -232,7 +247,7 @@ impl Compiler {
                     let op = match s.scope {
                         Scope::Global => SetGlobal,
                         Scope::Local => SetLocal,
-                        Scope::Builtin => panic!("cannot define an object with builtin scope"),
+                        _ => panic!("cannot define an object with non-local or global scope"),
                     };
 
                     self.emit(Opcode::Control(op), vec![s.index])?;
@@ -247,7 +262,7 @@ impl Compiler {
                     // pointers at this point.
                     let idx = self
                         .symbols
-                        .borrow()
+                        .borrow_mut()
                         .resolve(&l.name)
                         .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(l.name)))?
                         .index;
@@ -462,6 +477,18 @@ impl Compiler {
             .expect("left scope without entering one previously");
 
         scope.instructions
+    }
+
+    fn load_symbol(&mut self, s: Symbol) -> Result<()> {
+        let op = match s.scope {
+            Scope::Builtin => GetBuiltin,
+            Scope::Global => GetGlobal,
+            Scope::Local => GetLocal,
+            Scope::Free => GetFree,
+        };
+
+        self.emit(Opcode::Control(op), vec![s.index])?;
+        Ok(())
     }
 }
 

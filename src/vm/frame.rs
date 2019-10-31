@@ -42,6 +42,7 @@ impl FrameStack {
 
 /// Stores a stack frame for a running `Vm` bytecode program.
 pub struct Frame {
+    cl: object::Closure,
     ins_len: u64,
     c: io::Cursor<Vec<u8>>,
     pub num_locals: usize,
@@ -49,12 +50,15 @@ pub struct Frame {
 }
 
 impl Frame {
-    /// Produces a `Frame` from an input `object::CompiledFunction`.
-    pub fn new(func: object::CompiledFunction, fp: usize) -> Self {
+    /// Produces a `Frame` from an input `object::Closure`.
+    pub fn new(cl: object::Closure, fp: usize) -> Self {
+        // TODO: work this out.
+        let clos = cl.clone();
         Frame {
-            ins_len: func.instructions.len() as u64,
-            c: io::Cursor::new(func.instructions),
-            num_locals: func.num_locals,
+            cl: clos,
+            ins_len: cl.func.instructions.len() as u64,
+            c: io::Cursor::new(cl.func.instructions),
+            num_locals: cl.func.num_locals,
             fp,
         }
     }
