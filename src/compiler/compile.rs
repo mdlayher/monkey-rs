@@ -75,19 +75,38 @@ impl Compiler {
                     self.emit(Opcode::Control(op), vec![])?;
                 }
                 ast::Expression::Call(c) => {
+                    // Compile the function itself.
                     self.compile(ast::Node::Expression(*c.function))?;
-                    self.emit(Opcode::Control(Call), vec![])?;
+
+                    // Then compile each of its arguments and emit the Call
+                    // opcode with the number of arguments.
+                    let n = c.arguments.len();
+                    for a in c.arguments {
+                        self.compile(ast::Node::Expression(a))?;
+                    }
+
+                    self.emit(Opcode::Control(Call), vec![n])?;
                 }
                 ast::Expression::Float(f) => {
                     let oper = vec![self.add_constant(Object::Float(f.into()))];
                     self.emit(Opcode::Control(Constant), oper)?;
                 }
                 ast::Expression::Function(f) => {
-                    // Enter a new scope and compile the body of the function.
-                    // Once we leave the scope, place the function's instructions
-                    // as a compiled function constant to be executed at a
-                    // later time.
+                    // Enter a new scope and compile the arguments and body of
+                    // the function. Once we leave the scope, place the
+                    // function's instructions as a compiled function constant
+                    // to be executed at a later time.
                     self.enter_scope();
+
+                    // Shorten the scope of the symbol table borrow and define
+                    // symbols for the parameters.
+                    {
+                        let mut table = self.symbols.borrow_mut();
+                        for p in &f.parameters {
+                            table.define(p.to_string());
+                        }
+                    }
+
                     self.compile(ast::Node::Statement(ast::Statement::Block(f.body)))?;
 
                     // Allow the return value to be passed to the calling scope.

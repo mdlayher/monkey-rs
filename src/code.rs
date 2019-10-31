@@ -371,7 +371,7 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             },
             ControlOpcode::Call => Definition {
                 name: "Call",
-                operand_widths: vec![],
+                operand_widths: vec![Width::One],
             },
             ControlOpcode::ReturnValue => Definition {
                 name: "ReturnValue",

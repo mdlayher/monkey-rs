@@ -295,12 +295,27 @@ fn vm_run_ok() {
             ",
             Object::Integer(97),
         ),
+        (
+            "
+                let identity = fn(a) { a };
+                identity(4);
+            ",
+            Object::Integer(4),
+        ),
+        (
+            "
+                let sum = fn(a, b) { a + b };
+                sum(1, 2);
+            ",
+            Object::Integer(3),
+        ),
     ];
 
     for (input, want) in &tests {
         let bc = compile(input);
         let mut vm = Vm::new(bc.clone());
-        vm.run().expect("failed to run VM");
+        vm.run()
+            .unwrap_or_else(|_| panic!("failed to run VM: {}", input));
 
         assert_eq!(
             *want,

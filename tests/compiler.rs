@@ -2,7 +2,7 @@ extern crate mdl_monkey;
 
 use mdl_monkey::{
     ast,
-    code::*,
+    code::{BinaryOpcode::*, CompositeOpcode::*, ControlOpcode::*, Instructions, UnaryOpcode::*},
     compiler::*,
     lexer,
     object::{self, Object},
@@ -16,16 +16,16 @@ fn compiler_ok() {
             "1 + 2",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // +, pop
-                BinaryOpcode::Add as u8,
-                ControlOpcode::Pop as u8,
+                Add as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1), Object::Integer(2)],
         ),
@@ -33,15 +33,15 @@ fn compiler_ok() {
             "2; 4;",
             vec![
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(2), Object::Integer(4)],
         ),
@@ -49,16 +49,16 @@ fn compiler_ok() {
             "1 * 1.0",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 1.0
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // *, pop
-                BinaryOpcode::Mul as u8,
-                ControlOpcode::Pop as u8,
+                Mul as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1), Object::Float(1.0)],
         ),
@@ -66,11 +66,11 @@ fn compiler_ok() {
             "true; false;",
             vec![
                 // true
-                ControlOpcode::True as u8,
-                ControlOpcode::Pop as u8,
+                True as u8,
+                Pop as u8,
                 // false
-                ControlOpcode::False as u8,
-                ControlOpcode::Pop as u8,
+                False as u8,
+                Pop as u8,
             ],
             vec![],
         ),
@@ -78,16 +78,16 @@ fn compiler_ok() {
             "2 == 4",
             vec![
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // equal
-                BinaryOpcode::Equal as u8,
-                ControlOpcode::Pop as u8,
+                Equal as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(2), Object::Integer(4)],
         ),
@@ -95,16 +95,16 @@ fn compiler_ok() {
             "2 != 4",
             vec![
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // not equal
-                BinaryOpcode::NotEqual as u8,
-                ControlOpcode::Pop as u8,
+                NotEqual as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(2), Object::Integer(4)],
         ),
@@ -112,16 +112,16 @@ fn compiler_ok() {
             "2 > 4",
             vec![
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // greater than
-                BinaryOpcode::GreaterThan as u8,
-                ControlOpcode::Pop as u8,
+                GreaterThan as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(2), Object::Integer(4)],
         ),
@@ -130,16 +130,16 @@ fn compiler_ok() {
             // Compiler reorders the less-than to a greater-than operation.
             vec![
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // greater than
-                BinaryOpcode::GreaterThan as u8,
-                ControlOpcode::Pop as u8,
+                GreaterThan as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(4), Object::Integer(2)],
         ),
@@ -147,19 +147,19 @@ fn compiler_ok() {
             "-1; -2;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // negate
-                UnaryOpcode::Negate as u8,
-                ControlOpcode::Pop as u8,
+                Negate as u8,
+                Pop as u8,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // negate
-                UnaryOpcode::Negate as u8,
-                ControlOpcode::Pop as u8,
+                Negate as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1), Object::Integer(2)],
         ),
@@ -167,16 +167,16 @@ fn compiler_ok() {
             "!true; !!false;",
             vec![
                 // true
-                ControlOpcode::True as u8,
+                True as u8,
                 // not
-                UnaryOpcode::Not as u8,
-                ControlOpcode::Pop as u8,
+                Not as u8,
+                Pop as u8,
                 // false
-                ControlOpcode::False as u8,
+                False as u8,
                 // not, not
-                UnaryOpcode::Not as u8,
-                UnaryOpcode::Not as u8,
-                ControlOpcode::Pop as u8,
+                Not as u8,
+                Not as u8,
+                Pop as u8,
             ],
             vec![],
         ),
@@ -184,27 +184,27 @@ fn compiler_ok() {
             "if (true) { 10 }; 3333;",
             vec![
                 // true
-                ControlOpcode::True as u8,
+                True as u8,
                 // jump not true
-                ControlOpcode::JumpNotTrue as u8,
+                JumpNotTrue as u8,
                 0x00,
                 0x0a,
                 // 10
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // jump
-                ControlOpcode::Jump as u8,
+                Jump as u8,
                 0x00,
                 0x0b,
                 // null
-                ControlOpcode::Null as u8,
-                ControlOpcode::Pop as u8,
+                Null as u8,
+                Pop as u8,
                 // 3333
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(10), Object::Integer(3333)],
         ),
@@ -212,29 +212,29 @@ fn compiler_ok() {
             "if (true) { 10 } else { 20 }; 3333;",
             vec![
                 // true
-                ControlOpcode::True as u8,
+                True as u8,
                 // jump not true
-                ControlOpcode::JumpNotTrue as u8,
+                JumpNotTrue as u8,
                 0x00,
                 0x0a,
                 // 10
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // jump
-                ControlOpcode::Jump as u8,
+                Jump as u8,
                 0x00,
                 0x0d,
                 // 20
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
                 // 3333
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(10),
@@ -246,19 +246,19 @@ fn compiler_ok() {
             "let one = 1; let two = 2;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // set 1
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // set 2
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x01,
             ],
@@ -268,18 +268,18 @@ fn compiler_ok() {
             "let one = 1; one;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // set 1
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
                 // get 1
-                ControlOpcode::GetGlobal as u8,
+                GetGlobal as u8,
                 0x00,
                 0x00,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1)],
         ),
@@ -287,26 +287,26 @@ fn compiler_ok() {
             "let one = 1; let two = one; two;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // set one
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
                 // get one
-                ControlOpcode::GetGlobal as u8,
+                GetGlobal as u8,
                 0x00,
                 0x00,
                 // set two
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x01,
                 // get two
-                ControlOpcode::GetGlobal as u8,
+                GetGlobal as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1)],
         ),
@@ -314,10 +314,10 @@ fn compiler_ok() {
             r#""monkey""#,
             vec![
                 // monkey
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::String("monkey".to_string())],
         ),
@@ -325,16 +325,16 @@ fn compiler_ok() {
             r#""mon" + "key""#,
             vec![
                 // mon
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // key
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // +
-                BinaryOpcode::Add as u8,
-                ControlOpcode::Pop as u8,
+                Add as u8,
+                Pop as u8,
             ],
             vec![
                 Object::String("mon".to_string()),
@@ -345,10 +345,10 @@ fn compiler_ok() {
             "[]",
             vec![
                 // array
-                CompositeOpcode::Array as u8,
+                Array as u8,
                 0x00,
                 0x00,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![],
         ),
@@ -356,22 +356,22 @@ fn compiler_ok() {
             "[1, 2, 3]",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // 3
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
                 // array
-                CompositeOpcode::Array as u8,
+                Array as u8,
                 0x00,
                 0x03,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)],
         ),
@@ -379,30 +379,30 @@ fn compiler_ok() {
             "[1 + 2, 3 - 4]",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // +
-                BinaryOpcode::Add as u8,
+                Add as u8,
                 // 3
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x03,
                 // -
-                BinaryOpcode::Sub as u8,
+                Sub as u8,
                 // array
-                CompositeOpcode::Array as u8,
+                Array as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(1),
@@ -415,10 +415,7 @@ fn compiler_ok() {
             "{}",
             vec![
                 // hash
-                CompositeOpcode::Hash as u8,
-                0x00,
-                0x00,
-                ControlOpcode::Pop as u8,
+                Hash as u8, 0x00, 0x00, Pop as u8,
             ],
             vec![],
         ),
@@ -426,26 +423,26 @@ fn compiler_ok() {
             "{1: 2, 3: 4}",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // 3
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
                 // 4
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x03,
                 // hash
-                CompositeOpcode::Hash as u8,
+                Hash as u8,
                 0x00,
                 0x04,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(1),
@@ -458,16 +455,16 @@ fn compiler_ok() {
             "[][0]",
             vec![
                 // array
-                CompositeOpcode::Array as u8,
+                Array as u8,
                 0x00,
                 0x00,
                 // 0
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // index
-                BinaryOpcode::Index as u8,
-                ControlOpcode::Pop as u8,
+                Index as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(0)],
         ),
@@ -475,16 +472,16 @@ fn compiler_ok() {
             r#"{}["foo"]"#,
             vec![
                 // hash
-                CompositeOpcode::Hash as u8,
+                Hash as u8,
                 0x00,
                 0x00,
                 // foo
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // index
-                BinaryOpcode::Index as u8,
-                ControlOpcode::Pop as u8,
+                Index as u8,
+                Pop as u8,
             ],
             vec![Object::String("foo".to_string())],
         ),
@@ -492,18 +489,18 @@ fn compiler_ok() {
             "set{0, 1}",
             vec![
                 // 0
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // set
-                CompositeOpcode::Set as u8,
+                Set as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(0), Object::Integer(1)],
         ),
@@ -511,15 +508,15 @@ fn compiler_ok() {
             "set{}[0]",
             vec![
                 // set
-                CompositeOpcode::Set as u8,
+                Set as u8,
                 0x00,
                 0x00,
                 // 0
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
-                BinaryOpcode::Index as u8,
-                ControlOpcode::Pop as u8,
+                Index as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(0)],
         ),
@@ -527,10 +524,10 @@ fn compiler_ok() {
             "fn() { return 5 + 10 }",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(5),
@@ -538,16 +535,16 @@ fn compiler_ok() {
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 5
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
                         // 10
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x01,
                         // add, return
-                        BinaryOpcode::Add as u8,
-                        ControlOpcode::ReturnValue as u8,
+                        Add as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -557,10 +554,10 @@ fn compiler_ok() {
             "fn() { 5 + 10 }",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(5),
@@ -568,16 +565,16 @@ fn compiler_ok() {
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 5
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
                         // 10
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x01,
                         // add, return
-                        BinaryOpcode::Add as u8,
-                        ControlOpcode::ReturnValue as u8,
+                        Add as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -587,10 +584,10 @@ fn compiler_ok() {
             "fn() { 1; 2 }",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x02,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(1),
@@ -598,15 +595,15 @@ fn compiler_ok() {
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 1
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
-                        ControlOpcode::Pop as u8,
+                        Pop as u8,
                         // 2
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x01,
-                        ControlOpcode::ReturnValue as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -616,13 +613,13 @@ fn compiler_ok() {
             "fn() { }",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![Object::CompiledFunction(object::CompiledFunction {
-                instructions: vec![ControlOpcode::Return as u8],
+                instructions: vec![Return as u8],
                 num_locals: 0,
             })],
         ),
@@ -630,23 +627,24 @@ fn compiler_ok() {
             "fn() { 24 }();",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // call
-                ControlOpcode::Call as u8,
-                ControlOpcode::Pop as u8,
+                Call as u8,
+                0x00,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(24),
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 24
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
                         // return
-                        ControlOpcode::ReturnValue as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -656,30 +654,31 @@ fn compiler_ok() {
             "let noArg = fn() { 24 }; noArg();",
             vec![
                 // function
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // noArg bindings
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
-                ControlOpcode::GetGlobal as u8,
+                GetGlobal as u8,
                 0x00,
                 0x00,
                 // call
-                ControlOpcode::Call as u8,
-                ControlOpcode::Pop as u8,
+                Call as u8,
+                0x00,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(24),
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 24
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
                         // return
-                        ControlOpcode::ReturnValue as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -689,21 +688,21 @@ fn compiler_ok() {
             "let one = &1; *one;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // address
-                UnaryOpcode::Address as u8,
+                Address as u8,
                 // one bindings
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
-                ControlOpcode::GetGlobal as u8,
+                GetGlobal as u8,
                 0x00,
                 0x00,
                 // dereference
-                UnaryOpcode::Dereference as u8,
-                ControlOpcode::Pop as u8,
+                Dereference as u8,
+                Pop as u8,
             ],
             vec![Object::Integer(1)],
         ),
@@ -711,21 +710,21 @@ fn compiler_ok() {
             "let one = &1; let *one = 2;",
             vec![
                 // 1
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // address
-                UnaryOpcode::Address as u8,
+                Address as u8,
                 // one binding
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
                 // 2
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
                 // one pointer dereference
-                ControlOpcode::SetPointer as u8,
+                SetPointer as u8,
                 0x00,
                 0x00,
             ],
@@ -735,28 +734,28 @@ fn compiler_ok() {
             "let num = 55; fn() { num }",
             vec![
                 // 55
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x00,
                 // num binding
-                ControlOpcode::SetGlobal as u8,
+                SetGlobal as u8,
                 0x00,
                 0x00,
                 // fn
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(55),
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // num binding
-                        ControlOpcode::GetGlobal as u8,
+                        GetGlobal as u8,
                         0x00,
                         0x00,
-                        ControlOpcode::ReturnValue as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 0,
                 }),
@@ -771,28 +770,120 @@ fn compiler_ok() {
             ",
             vec![
                 // fn
-                ControlOpcode::Constant as u8,
+                Constant as u8,
                 0x00,
                 0x01,
-                ControlOpcode::Pop as u8,
+                Pop as u8,
             ],
             vec![
                 Object::Integer(55),
                 Object::CompiledFunction(object::CompiledFunction {
                     instructions: vec![
                         // 55
-                        ControlOpcode::Constant as u8,
+                        Constant as u8,
                         0x00,
                         0x00,
                         // num bindings
-                        ControlOpcode::SetLocal as u8,
+                        SetLocal as u8,
                         0x00,
-                        ControlOpcode::GetLocal as u8,
+                        GetLocal as u8,
                         0x00,
-                        ControlOpcode::ReturnValue as u8,
+                        ReturnValue as u8,
                     ],
                     num_locals: 1,
                 }),
+            ],
+        ),
+        (
+            "
+                let one = fn(a) { a };
+                one(24);
+            ",
+            vec![
+                // fn
+                Constant as u8,
+                0x00,
+                0x00,
+                // one bindings
+                SetGlobal as u8,
+                0x00,
+                0x00,
+                GetGlobal as u8,
+                0x00,
+                0x00,
+                // 24
+                Constant as u8,
+                0x00,
+                0x01,
+                Call as u8,
+                0x01,
+                Pop as u8,
+            ],
+            vec![
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // a binding
+                        GetLocal as u8,
+                        0x00,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 1,
+                }),
+                Object::Integer(24),
+            ],
+        ),
+        (
+            "
+                let many = fn(a, b, c) { a; b; c };
+                many(24, 25, 26);
+            ",
+            vec![
+                // fn
+                Constant as u8,
+                0x00,
+                0x00,
+                // many bindings
+                SetGlobal as u8,
+                0x00,
+                0x00,
+                GetGlobal as u8,
+                0x00,
+                0x00,
+                // 24
+                Constant as u8,
+                0x00,
+                0x01,
+                // 25
+                Constant as u8,
+                0x00,
+                0x02,
+                // 26
+                Constant as u8,
+                0x00,
+                0x03,
+                Call as u8,
+                0x03,
+                Pop as u8,
+            ],
+            vec![
+                Object::CompiledFunction(object::CompiledFunction {
+                    instructions: vec![
+                        // a, b, c bindings
+                        GetLocal as u8,
+                        0x00,
+                        Pop as u8,
+                        GetLocal as u8,
+                        0x01,
+                        Pop as u8,
+                        GetLocal as u8,
+                        0x02,
+                        ReturnValue as u8,
+                    ],
+                    num_locals: 3,
+                }),
+                Object::Integer(24),
+                Object::Integer(25),
+                Object::Integer(26),
             ],
         ),
     ];

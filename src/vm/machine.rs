@@ -141,15 +141,26 @@ impl Vm {
                 self.globals[idx as usize] = self.pop().clone();
             }
             ControlOpcode::Call => {
-                let obj = self.pop();
+                let num_args = self.frames.current_mut().read_u8()? as usize;
+
+                // Are there any arguments to pass as locals to a function call?
+                let obj = if num_args == 0 {
+                    // No, pop the function directly.
+                    self.pop().clone()
+                } else {
+                    // Yes, take the function object by calculating its offset
+                    // using the number of arguments.
+                    self.stack[self.sp - 1 - num_args].clone()
+                };
+
                 let func = match obj {
                     Object::CompiledFunction(f) => f,
-                    _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj.clone()))),
+                    _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj))),
                 };
 
                 // Push a new frame and set its frame pointer to the current
                 // stack pointer.
-                let frame = Frame::new(func.clone(), self.sp);
+                let frame = Frame::new(func, self.sp - num_args);
                 self.sp = frame.fp + frame.num_locals;
                 self.frames.push(frame);
             }
