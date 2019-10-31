@@ -193,7 +193,7 @@ impl Vm {
             ControlOpcode::Closure => {
                 let ctx = self.frames.current_mut();
                 let idx = ctx.read_u16()?;
-                let _free = ctx.read_u8()?;
+                let num_free = ctx.read_u8()? as usize;
 
                 let obj = &self.consts[idx as usize];
                 let func = match obj {
@@ -201,9 +201,18 @@ impl Vm {
                     _ => panic!("not a compiled function object: {:?}", obj),
                 };
 
-                self.push(Object::Closure(object::Closure { func, free: vec![] }));
+                let free = self.stack[self.sp - num_free..self.sp].to_vec();
+                self.sp -= num_free;
+
+                self.push(Object::Closure(object::Closure { func, free }));
             }
-            ControlOpcode::GetFree => unimplemented!(),
+            ControlOpcode::GetFree => {
+                let ctx = self.frames.current_mut();
+                let idx = ctx.read_u8()?;
+
+                let obj = ctx.free[idx as usize].clone();
+                self.push(obj);
+            }
         };
 
         Ok(())

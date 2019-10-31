@@ -239,11 +239,13 @@ impl Compiler {
                     }
                 }
                 ast::Statement::Let(l) => {
+                    // Define the symbol before compiling its body to enable
+                    // recursive functions.
+                    let s = self.symbols.borrow_mut().define(l.name);
                     self.compile(ast::Node::Expression(l.value))?;
 
                     // Define this identifier and emit it with the appropriate
                     // scope.
-                    let s = self.symbols.borrow_mut().define(l.name);
                     let op = match s.scope {
                         Scope::Global => SetGlobal,
                         Scope::Local => SetLocal,

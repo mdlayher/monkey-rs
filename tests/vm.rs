@@ -366,6 +366,55 @@ fn vm_run_ok() {
                 elements: vec![Object::Integer(2), Object::Integer(3)],
             }),
         ),
+        (
+            "
+                let newClosure = fn(a, b, c) {
+                    fn() { c; b; a; };
+                };
+                let closure = newClosure(99, 0, 0);
+                closure();
+            ",
+            Object::Integer(99),
+        ),
+        (
+            "
+                let newAdder = fn(a, b) {
+                    fn(c) { a + b + c };
+                };
+                let adder = newAdder(1, 2);
+                adder(8);
+            ",
+            Object::Integer(11),
+        ),
+        (
+            "
+                let a = 1;
+                let newAdderOuter = fn(b) {
+                    fn(c) {
+                        fn(d) { a + b + c + d };
+                    };
+                };
+                let newAdderInner = newAdderOuter(2);
+                let adder = newAdderInner(3);
+                adder(8);
+            ",
+            Object::Integer(14),
+        ),
+        (
+            "
+                let fibonacci = fn(x) {
+                    if (x == 0) {
+                        return 0;
+                    }
+                    if (x == 1) {
+                        return 1;
+                    }
+                    fibonacci(x - 1) + fibonacci(x - 2);
+                };
+                fibonacci(15);
+            ",
+            Object::Integer(610),
+        ),
     ];
 
     for (input, want) in &tests {

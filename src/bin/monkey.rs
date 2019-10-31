@@ -1,17 +1,13 @@
 extern crate getopts;
 extern crate mdl_monkey;
 
-use mdl_monkey::ast;
-use mdl_monkey::compiler::Compiler;
-use mdl_monkey::evaluator;
-use mdl_monkey::lexer::Lexer;
-use mdl_monkey::object::Environment;
-use mdl_monkey::parser::Parser;
-use mdl_monkey::token::Token;
-use mdl_monkey::vm::Vm;
+use mdl_monkey::{
+    ast, compiler::Compiler, evaluator, lexer::Lexer, object::Environment, parser::Parser,
+    token::Token, vm::Vm,
+};
 
 use getopts::Options;
-use std::env;
+use std::{env, time};
 
 fn main() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
@@ -118,13 +114,17 @@ fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
         println!("{}", bc);
     }
 
+    let start = time::Instant::now();
+
     let mut vm = Vm::new(bc);
     if let Err(err) = vm.run() {
         println!("error debug: {:?}\n", err);
         return Err(err.to_string());
     };
 
-    println!("compiler/VM:");
+    let end = start.elapsed().as_secs_f64();
+
+    println!("compiler/VM: ({}s elapsed)", end);
 
     // TODO(mdlayher): more output.
     println!("  - {:?}", vm.last_popped());
