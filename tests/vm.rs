@@ -6,7 +6,7 @@ use mdl_monkey::{
     ast,
     code::{BinaryOpcode, Opcode, UnaryOpcode},
     compiler, lexer,
-    object::{self, Hashable, Object},
+    object::{self, Array, Hashable, Object},
     parser,
     vm::*,
 };
@@ -346,6 +346,26 @@ fn vm_run_ok() {
             ",
             Object::Integer(50),
         ),
+        ("first([1, 2, 3])", Object::Integer(1)),
+        ("last([1, 2, 3])", Object::Integer(3)),
+        (r#"len("foo")"#, Object::Integer(3)),
+        (
+            "push([1, 2, 3], 4)",
+            Object::Array(Array {
+                elements: vec![
+                    Object::Integer(1),
+                    Object::Integer(2),
+                    Object::Integer(3),
+                    Object::Integer(4),
+                ],
+            }),
+        ),
+        (
+            "rest([1, 2, 3])",
+            Object::Array(Array {
+                elements: vec![Object::Integer(2), Object::Integer(3)],
+            }),
+        ),
     ];
 
     for (input, want) in &tests {
@@ -457,11 +477,20 @@ fn vm_runtime_errors() {
             "fn(a, b) { a + b; }(1)",
             ErrorKind::WrongNumberArguments { want: 2, got: 1 },
         ),
+        (
+            "len(1)",
+            ErrorKind::Object(object::Error::Builtin(
+                object::Builtin::Len,
+                "argument 1 cannot be used".to_string(),
+            )),
+        ),
     ];
 
     for (input, want) in &tests {
         let mut vm = Vm::new(compile(input));
-        let err = vm.run().expect_err("run did not return an error");
+        let err = vm
+            .run()
+            .expect_err(&format!("input: {}, run did not return an error", input));
 
         if let Error::Runtime(got) = err {
             assert_eq!(*want, got);

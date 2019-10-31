@@ -115,12 +115,39 @@ impl fmt::Display for Function {
 /// The object representation of a built-in Monkey function.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Builtin {
-    First,
-    Last,
-    Len,
-    Push,
-    Puts,
-    Rest,
+    First = 0x00,
+    Last = 0x01,
+    Len = 0x02,
+    Push = 0x03,
+    Puts = 0x04,
+    Rest = 0x05,
+}
+
+/// Returns all of the built-in functions.
+pub fn builtins() -> Vec<Builtin> {
+    vec![
+        Builtin::First,
+        Builtin::Last,
+        Builtin::Len,
+        Builtin::Push,
+        Builtin::Puts,
+        Builtin::Rest,
+    ]
+}
+
+impl From<u8> for Builtin {
+    /// Convert from a u8 to a Builtin.
+    fn from(v: u8) -> Self {
+        match v {
+            0x00 => Builtin::First,
+            0x01 => Builtin::Last,
+            0x02 => Builtin::Len,
+            0x03 => Builtin::Push,
+            0x04 => Builtin::Puts,
+            0x05 => Builtin::Rest,
+            _ => panic!("unhandled u8 to Builtin conversion: {}", v),
+        }
+    }
 }
 
 impl Builtin {

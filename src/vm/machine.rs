@@ -144,27 +144,14 @@ impl Vm {
             ControlOpcode::Call => {
                 let num_args = self.frames.current_mut().read_u8()? as usize;
 
-                // Take the compiled function at the correct offset after its
-                // arguments and verify it can be called.
+                // Take the compiled function or built-in at the correct offset
+                // after its arguments and handle it.
                 let obj = self.stack[self.sp - 1 - num_args].clone();
-                let func = match obj {
-                    Object::CompiledFunction(f) => f,
+                match obj {
+                    Object::Builtin(b) => self.call_builtin(b, num_args)?,
+                    Object::CompiledFunction(f) => self.call_function(f, num_args)?,
                     _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj))),
                 };
-
-                // Ensure the user passed the right number of parameters.
-                if num_args != func.num_parameters {
-                    return Err(Error::Runtime(ErrorKind::WrongNumberArguments {
-                        want: func.num_parameters,
-                        got: num_args,
-                    }));
-                }
-
-                // Push a new frame and set its frame pointer to the current
-                // stack pointer.
-                let frame = Frame::new(func, self.sp - num_args);
-                self.sp = frame.fp + frame.num_locals;
-                self.frames.push(frame);
             }
             ControlOpcode::ReturnValue => {
                 let ret = self.pop().clone();
@@ -194,6 +181,10 @@ impl Vm {
                 let i = f.fp + f.read_u8()? as usize;
 
                 self.push(self.stack[i].clone());
+            }
+            ControlOpcode::GetBuiltin => {
+                let i = self.frames.current_mut().read_u8()?;
+                self.push(Object::Builtin(object::Builtin::from(i)));
             }
         };
 
@@ -377,6 +368,40 @@ impl Vm {
         };
 
         self.push(out);
+        Ok(())
+    }
+
+    /// Executes a call operation on a built-in function.
+    fn call_builtin(&mut self, b: object::Builtin, num_args: usize) -> Result<()> {
+        // Gather the stack arguments and apply the built-in accordingly.
+        let args = &self.stack[self.sp - num_args..self.sp];
+        let obj = b
+            .apply(args)
+            .map_err(|e| Error::Runtime(ErrorKind::Object(e)))?;
+
+        // Adjust the stack in preparation for returning the output.
+        self.sp = self.sp - 1 - num_args;
+        self.push(obj);
+
+        Ok(())
+    }
+
+    /// Executes a call operation on a user-defined function.
+    fn call_function(&mut self, func: object::CompiledFunction, num_args: usize) -> Result<()> {
+        // Ensure the user passed the right number of parameters.
+        if num_args != func.num_parameters {
+            return Err(Error::Runtime(ErrorKind::WrongNumberArguments {
+                want: func.num_parameters,
+                got: num_args,
+            }));
+        }
+
+        // Push a new frame and set its frame pointer to the current
+        // stack pointer.
+        let frame = Frame::new(func, self.sp - num_args);
+        self.sp = frame.fp + frame.num_locals;
+        self.frames.push(frame);
+
         Ok(())
     }
 

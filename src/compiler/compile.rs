@@ -44,10 +44,21 @@ impl Compiler {
         // Initialize the compiler and enter the "main" scope. Do not call
         // the enter_scope method to avoid creating an immediate outer
         // symbol table.
-        Self {
+        let c = Self {
             scopes: vec![CompilationScope::default()],
             ..Self::default()
+        };
+
+        // Define builtins so we can emit the appropriate opcodes for
+        // handling them.
+        {
+            let mut table = c.symbols.borrow_mut();
+            for b in object::builtins() {
+                table.define_builtin(b);
+            }
         }
+
+        c
     }
 
     pub fn compile(&mut self, node: ast::Node) -> Result<()> {
@@ -156,6 +167,7 @@ impl Compiler {
                         .ok_or(Error::Compile(ErrorKind::UndefinedIdentifier(id)))?;
 
                     let op = match s.scope {
+                        Scope::Builtin => GetBuiltin,
                         Scope::Global => GetGlobal,
                         Scope::Local => GetLocal,
                     };
@@ -220,6 +232,7 @@ impl Compiler {
                     let op = match s.scope {
                         Scope::Global => SetGlobal,
                         Scope::Local => SetLocal,
+                        Scope::Builtin => panic!("cannot define an object with builtin scope"),
                     };
 
                     self.emit(Opcode::Control(op), vec![s.index])?;

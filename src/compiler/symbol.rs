@@ -2,6 +2,8 @@
 
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+use crate::object;
+
 /// A table that can be used to define and resolve `Symbols`.
 #[derive(Debug, Default)]
 pub struct SymbolTable {
@@ -18,6 +20,20 @@ impl SymbolTable {
             outer: Some(outer),
             ..Self::default()
         }
+    }
+
+    /// Defines a built-in symbol.
+    pub fn define_builtin(&mut self, b: object::Builtin) {
+        let index = b.clone() as usize;
+        let name = format!("{}", b);
+
+        self.store.insert(
+            name,
+            Symbol {
+                scope: Scope::Builtin,
+                index,
+            },
+        );
     }
 
     /// Defines a new `Symbol` by name.
@@ -61,6 +77,7 @@ pub struct Symbol {
 /// The scope of a symbol.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Scope {
+    Builtin,
     Global,
     Local,
 }
@@ -68,6 +85,7 @@ pub enum Scope {
 #[cfg(test)]
 mod tests {
     use super::{Scope, Symbol, SymbolTable};
+    use crate::object;
     use std::{cell::RefCell, rc::Rc};
 
     #[test]
@@ -104,9 +122,11 @@ mod tests {
     }
 
     #[test]
-    fn symbol_table_local_ok() {
+    fn symbol_table_nesting_ok() {
         let global = Rc::new(RefCell::new(SymbolTable::default()));
         global.borrow_mut().define("a".to_string());
+
+        global.borrow_mut().define_builtin(object::Builtin::First);
 
         let local = Rc::new(RefCell::new(SymbolTable::new_enclosed(global)));
         local.borrow_mut().define("b".to_string());
@@ -141,6 +161,12 @@ mod tests {
             let gsym = nested.resolve(&"a").expect("a should always be defined");
             assert_eq!(0, gsym.index);
             assert_eq!(Scope::Global, gsym.scope);
+
+            let bsym = nested
+                .resolve(&"first")
+                .expect("first should always be defined");
+            assert_eq!(0, bsym.index);
+            assert_eq!(Scope::Builtin, bsym.scope);
         }
     }
 }

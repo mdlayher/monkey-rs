@@ -36,6 +36,7 @@ pub enum ControlOpcode {
     SetPointer = 0x0c,
     GetLocal = 0x0d,
     SetLocal = 0x0e,
+    GetBuiltin = 0x0f,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -108,6 +109,7 @@ impl fmt::Display for ControlOpcode {
             Self::SetPointer => write!(f, "SET POINTER"),
             Self::GetLocal => write!(f, "GET LOCAL"),
             Self::SetLocal => write!(f, "SET LOCAL"),
+            Self::GetBuiltin => write!(f, "GET BUILTIN"),
         }
     }
 }
@@ -131,6 +133,7 @@ impl From<u8> for ControlOpcode {
             0x0c => ControlOpcode::SetPointer,
             0x0d => ControlOpcode::GetLocal,
             0x0e => ControlOpcode::SetLocal,
+            0x0f => ControlOpcode::GetBuiltin,
             _ => panic!("unhandled u8 to ControlOpcode conversion: {}", v),
         }
     }
@@ -391,6 +394,10 @@ fn lookup<'a>(op: Opcode) -> Definition<'a> {
             },
             ControlOpcode::SetLocal => Definition {
                 name: "SetLocal",
+                operand_widths: vec![Width::One],
+            },
+            ControlOpcode::GetBuiltin => Definition {
+                name: "GetBuiltin",
                 operand_widths: vec![Width::One],
             },
         },

@@ -896,6 +896,41 @@ fn compiler_ok() {
                 Object::Integer(26),
             ],
         ),
+        (
+            "
+                len([]);
+                push([], 1);
+            ",
+            vec![
+                // len
+                GetBuiltin as u8,
+                0x02,
+                // array
+                Array as u8,
+                0x00,
+                0x00,
+                // call
+                Call as u8,
+                0x01,
+                Pop as u8,
+                // push
+                GetBuiltin as u8,
+                0x03,
+                // array
+                Array as u8,
+                0x00,
+                0x00,
+                // 1
+                Constant as u8,
+                0x00,
+                0x00,
+                // call
+                Call as u8,
+                0x02,
+                Pop as u8,
+            ],
+            vec![Object::Integer(1)],
+        ),
     ];
 
     for (input, instructions, constants) in &tests {
