@@ -37,8 +37,9 @@ impl Vm {
         let main = Frame::new(
             object::CompiledFunction {
                 instructions: bc.instructions,
-                // main has no local bindings.
+                // main has no local bindings and no parameters.
                 num_locals: 0,
+                num_parameters: 0,
             },
             // Stack/frame pointer starts at 0 for main.
             0,
@@ -143,20 +144,21 @@ impl Vm {
             ControlOpcode::Call => {
                 let num_args = self.frames.current_mut().read_u8()? as usize;
 
-                // Are there any arguments to pass as locals to a function call?
-                let obj = if num_args == 0 {
-                    // No, pop the function directly.
-                    self.pop().clone()
-                } else {
-                    // Yes, take the function object by calculating its offset
-                    // using the number of arguments.
-                    self.stack[self.sp - 1 - num_args].clone()
-                };
-
+                // Take the compiled function at the correct offset after its
+                // arguments and verify it can be called.
+                let obj = self.stack[self.sp - 1 - num_args].clone();
                 let func = match obj {
                     Object::CompiledFunction(f) => f,
                     _ => return Err(Error::Runtime(ErrorKind::BadFunctionCall(obj))),
                 };
+
+                // Ensure the user passed the right number of parameters.
+                if num_args != func.num_parameters {
+                    return Err(Error::Runtime(ErrorKind::WrongNumberArguments {
+                        want: func.num_parameters,
+                        got: num_args,
+                    }));
+                }
 
                 // Push a new frame and set its frame pointer to the current
                 // stack pointer.
@@ -168,19 +170,12 @@ impl Vm {
                 let ret = self.pop().clone();
 
                 let f = self.frames.pop();
-                self.sp = f.fp;
-
-                // NB: the book specifies an extra pop here and in Return,
-                // but it seems that our VM is already popping the function off
-                // the stack. Perhaps this is a slight error in the compiler,
-                // but it seems to work.
+                self.sp = f.fp - 1;
                 self.push(ret);
             }
             ControlOpcode::Return => {
                 let f = self.frames.pop();
-                self.sp = f.fp;
-
-                // NB: see above note in ReturnValue.
+                self.sp = f.fp - 1;
                 self.push(Object::Null);
             }
             ControlOpcode::SetPointer => {

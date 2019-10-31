@@ -119,7 +119,10 @@ fn run_vm(node: ast::Node, print_bytecode: bool) -> Result<(), String> {
     }
 
     let mut vm = Vm::new(bc);
-    vm.run().map_err(|err| err.to_string())?;
+    if let Err(err) = vm.run() {
+        println!("error debug: {:?}\n", err);
+        return Err(err.to_string());
+    };
 
     println!("compiler/VM:");
 

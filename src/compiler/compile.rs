@@ -128,6 +128,7 @@ impl Compiler {
                         object::CompiledFunction {
                             instructions,
                             num_locals,
+                            num_parameters: f.parameters.len(),
                         },
                     ))];
                     self.emit(Opcode::Control(Constant), oper)?;

@@ -309,13 +309,50 @@ fn vm_run_ok() {
             ",
             Object::Integer(3),
         ),
+        (
+            "
+                let sum = fn(a, b) {
+                    let c = a + b;
+                    c
+                };
+                sum(1, 2);
+            ",
+            Object::Integer(3),
+        ),
+        (
+            "
+                let sum = fn(a, b) {
+                    let c = a + b;
+                    c
+                };
+                sum(1, 2) + sum(3, 4);
+            ",
+            Object::Integer(10),
+        ),
+        (
+            "
+                let global = 10;
+
+                let sum = fn(a, b) {
+                    let c = a + b;
+                    c + global;
+                };
+
+                let outer = fn() {
+                    sum(1, 2) + sum(3, 4) + global;
+                };
+
+                outer() + global;
+            ",
+            Object::Integer(50),
+        ),
     ];
 
     for (input, want) in &tests {
         let bc = compile(input);
         let mut vm = Vm::new(bc.clone());
         vm.run()
-            .unwrap_or_else(|_| panic!("failed to run VM: {}", input));
+            .unwrap_or_else(|err| panic!("failed to run VM: {}: {}", input, err));
 
         assert_eq!(
             *want,
@@ -407,6 +444,18 @@ fn vm_runtime_errors() {
         (
             r#"{}[0.0]"#,
             ErrorKind::Object(object::Error::NotHashable(Object::Float(0.))),
+        ),
+        (
+            "fn() { 1; }(1)",
+            ErrorKind::WrongNumberArguments { want: 0, got: 1 },
+        ),
+        (
+            "fn(a) { a; }()",
+            ErrorKind::WrongNumberArguments { want: 1, got: 0 },
+        ),
+        (
+            "fn(a, b) { a + b; }(1)",
+            ErrorKind::WrongNumberArguments { want: 2, got: 1 },
         ),
     ];
 

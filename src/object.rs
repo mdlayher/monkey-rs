@@ -374,14 +374,16 @@ impl fmt::Display for Set {
 pub struct CompiledFunction {
     pub instructions: Vec<u8>,
     pub num_locals: usize,
+    pub num_parameters: usize,
 }
 
 impl fmt::Display for CompiledFunction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "compiled function: locals: {}\n  - instructions:\n{}",
+            "compiled function: locals: {}, parameters: {}\n  - instructions:\n{}",
             self.num_locals,
+            self.num_parameters,
             code::Instructions::parse(&self.instructions).expect("must parse"),
         )
     }

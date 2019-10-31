@@ -70,6 +70,10 @@ pub enum ErrorKind {
         op: Opcode,
         args: Vec<Object>,
     },
+    WrongNumberArguments {
+        want: usize,
+        got: usize,
+    },
     DuplicateKey(object::Hashable),
     BadFunctionCall(Object),
     BadPointerDereference(Object),
@@ -98,6 +102,11 @@ impl fmt::Display for ErrorKind {
                     op, args[0], op, args[1],
                 ),
             },
+            ErrorKind::WrongNumberArguments { want, got } => write!(
+                f,
+                "function call expects {} arguments, but got {}",
+                want, got,
+            ),
             ErrorKind::DuplicateKey(k) => write!(f, "duplicate key {} in data structure", k),
             ErrorKind::BadFunctionCall(o) => write!(f, "cannot call object {:?} as a function", o),
             ErrorKind::BadPointerDereference(o) => {
