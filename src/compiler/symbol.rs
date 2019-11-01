@@ -82,8 +82,8 @@ impl SymbolTable {
 
         let (obj, free) = match outer.borrow_mut().resolve(name) {
             Some(s) => match s.scope {
-                Scope::Builtin | Scope::Global => (Some(s.clone()), false),
-                _ => (Some(s.clone()), true),
+                Scope::Builtin | Scope::Global => (Some(s), false),
+                _ => (Some(s), true),
             },
             None => (None, false),
         };
@@ -144,7 +144,7 @@ mod tests {
         ];
 
         for (name, symbol) in &tests {
-            let defined = st.define(name.to_string());
+            let defined = st.define((*name).to_string());
             let resolved = st.resolve(name).expect("a symbol should be defined");
 
             assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
@@ -187,7 +187,7 @@ mod tests {
         ];
 
         for (name, symbol) in &tests {
-            let defined = nested.define(name.to_string());
+            let defined = nested.define((*name).to_string());
             let resolved = nested.resolve(name).expect("a symbol should be defined");
 
             assert_eq!(defined, resolved, "defined and resolved symbol mismatch");

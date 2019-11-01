@@ -286,7 +286,7 @@ let apply = fn(func, x, y) { func(x) };
 apply(add, 2, 2);
 ",
     )
-    .expect_err("expected an error but none was found");;
+    .expect_err("expected an error but none was found");
 
     if let evaluator::Error::Evaluation(node, _) = err {
         // Pinpoint the error.
