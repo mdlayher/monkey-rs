@@ -18,3 +18,4 @@ maintenance = { status = "experimental" }
 [dependencies]
 byteorder = "1.3.2"
 getopts = "0.2.21"
+thiserror = "1.0.4"

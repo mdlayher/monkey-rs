@@ -439,59 +439,49 @@ fn vm_runtime_errors() {
     let tests = vec![
         (
             "1[0]",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Index),
-                args: vec![Object::Integer(1), Object::Integer(0)],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Index),
+                vec![Object::Integer(1), Object::Integer(0)],
+            ),
         ),
         (
             "-true",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::UnaryOperatorUnsupported,
-                op: Opcode::Unary(UnaryOpcode::Negate),
-                args: vec![object::TRUE],
-            },
+            ErrorKind::OperatorUnsupported(Opcode::Unary(UnaryOpcode::Negate), vec![object::TRUE]),
         ),
         (
             "true + false",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Add),
-                args: vec![object::TRUE, object::FALSE],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Add),
+                vec![object::TRUE, object::FALSE],
+            ),
         ),
         (
             "false - false",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Sub),
-                args: vec![object::FALSE, object::FALSE],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Sub),
+                vec![object::FALSE, object::FALSE],
+            ),
         ),
         (
             "true + 1",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Add),
-                args: vec![object::TRUE, Object::Integer(1)],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Add),
+                vec![object::TRUE, Object::Integer(1)],
+            ),
         ),
         (
             "1.1 == 1.1",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Equal),
-                args: vec![Object::Float(1.1), Object::Float(1.1)],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Equal),
+                vec![Object::Float(1.1), Object::Float(1.1)],
+            ),
         ),
         (
             "1.1 != 1.1",
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::NotEqual),
-                args: vec![Object::Float(1.1), Object::Float(1.1)],
-            },
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::NotEqual),
+                vec![Object::Float(1.1), Object::Float(1.1)],
+            ),
         ),
         (
             "{0.00: false}",
@@ -499,16 +489,15 @@ fn vm_runtime_errors() {
         ),
         (
             r#"[0]["hello"]"#,
-            ErrorKind::BadArguments {
-                kind: BadArgumentKind::BinaryOperatorUnsupported,
-                op: Opcode::Binary(BinaryOpcode::Index),
-                args: vec![
+            ErrorKind::OperatorUnsupported(
+                Opcode::Binary(BinaryOpcode::Index),
+                vec![
                     Object::Array(object::Array {
                         elements: vec![Object::Integer(0)],
                     }),
                     Object::String("hello".to_string()),
                 ],
-            },
+            ),
         ),
         (
             r#"{}[0.0]"#,

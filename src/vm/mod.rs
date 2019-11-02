@@ -2,7 +2,7 @@
 //! <https://compilerbook.com/>.
 
 pub mod error;
-pub use error::{BadArgumentKind, Error, ErrorKind, Result};
+pub use error::{Error, ErrorKind, Result};
 
 mod frame;
 

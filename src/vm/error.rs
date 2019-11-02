@@ -1,118 +1,40 @@
 //! Error types for the `vm` module.
 
-use std::{error, fmt, io, result};
+use std::{io, result};
 
 use crate::{
     code::Opcode,
     object::{self, Object},
 };
 
+extern crate thiserror;
+use thiserror::Error;
+
 /// A Result type specialized use with for an Error.
 pub type Result<T> = result::Result<T, Error>;
 
 /// Specifies the different classes of errors which may occur.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("runtime error: {0}")]
     Runtime(ErrorKind),
-    Io(io::Error),
-}
-
-impl Error {
-    /// Produces an `Error::Runtime(ErrorKind::BadArguments)` error with the
-    /// input parameters.
-    pub fn bad_arguments(kind: BadArgumentKind, op: Opcode, args: &[Object]) -> Self {
-        // Sanity checks to ensure kind and number of arguments always match up.
-        let n = match kind {
-            BadArgumentKind::UnaryOperatorUnsupported => 1,
-            BadArgumentKind::BinaryOperatorUnsupported => 2,
-        };
-
-        assert_eq!(
-            args.len(),
-            n,
-            "unexpected number of arguments for {:?} error",
-            kind
-        );
-
-        Self::Runtime(ErrorKind::BadArguments {
-            kind,
-            op,
-            // Make a copy of args so they can return to the caller without
-            // referencing our owned stack.
-            args: args.to_vec(),
-        })
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::Runtime(kind) => write!(f, "runtime error: {}", kind),
-            Error::Io(err) => err.fmt(f),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match self {
-            Error::Io(err) => Some(err),
-            _ => None,
-        }
-    }
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
 }
 
 /// Describes runtime errors which may occur during `Vm::run`.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum ErrorKind {
-    BadArguments {
-        kind: BadArgumentKind,
-        op: Opcode,
-        args: Vec<Object>,
-    },
-    WrongNumberArguments {
-        want: usize,
-        got: usize,
-    },
+    #[error(r#"operator "{0}" is not supported for argument(s): {1:?}"#)]
+    OperatorUnsupported(Opcode, Vec<Object>),
+    #[error("function call expects {want} arguments, but got {got}")]
+    WrongNumberArguments { want: usize, got: usize },
+    #[error("duplicate key {0} in data structure")]
     DuplicateKey(object::Hashable),
+    #[error("cannot call object {0:?} as function")]
     BadFunctionCall(Object),
+    #[error("cannot dereference non-pointer object {0:?}")]
     BadPointerDereference(Object),
-    Object(object::Error),
-}
-
-/// Describes a particular type of bad arguments error.
-#[derive(Debug, PartialEq)]
-pub enum BadArgumentKind {
-    UnaryOperatorUnsupported,
-    BinaryOperatorUnsupported,
-}
-
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ErrorKind::BadArguments { kind, op, args } => match kind {
-                BadArgumentKind::UnaryOperatorUnsupported => write!(
-                    f,
-                    "unary operator {} not supported on argument: \"{}{}\"",
-                    op, op, args[0],
-                ),
-                BadArgumentKind::BinaryOperatorUnsupported => write!(
-                    f,
-                    "binary operator {} not supported on arguments: \"{} {} {}\"",
-                    op, args[0], op, args[1],
-                ),
-            },
-            ErrorKind::WrongNumberArguments { want, got } => write!(
-                f,
-                "function call expects {} arguments, but got {}",
-                want, got,
-            ),
-            ErrorKind::DuplicateKey(k) => write!(f, "duplicate key {} in data structure", k),
-            ErrorKind::BadFunctionCall(o) => write!(f, "cannot call object {:?} as a function", o),
-            ErrorKind::BadPointerDereference(o) => {
-                write!(f, "cannot dereference non-pointer object {:?}", o)
-            }
-            ErrorKind::Object(err) => write!(f, "object error: {}", err),
-        }
-    }
+    #[error("object error: {0}")]
+    Object(#[from] object::Error),
 }

@@ -23,11 +23,10 @@ pub fn binary_float(op: BinaryOpcode, args: &[Object], l: f64, r: f64) -> Result
         BinaryOpcode::GreaterThan => Object::Boolean(l > r),
         BinaryOpcode::Equal | BinaryOpcode::NotEqual | BinaryOpcode::Index => {
             // Operator not supported with float arguments.
-            return Err(Error::bad_arguments(
-                BadArgumentKind::BinaryOperatorUnsupported,
+            return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                 Opcode::Binary(op),
-                args,
-            ));
+                args.to_vec(),
+            )));
         }
     };
 
@@ -53,11 +52,10 @@ pub fn binary_set(op: BinaryOpcode, args: &[Object], l: &Set, r: &Set) -> Result
         BinaryOpcode::Mul => l.set.intersection(&r.set).cloned().collect(),
         BinaryOpcode::Div => l.set.symmetric_difference(&r.set).cloned().collect(),
         _ => {
-            return Err(Error::bad_arguments(
-                BadArgumentKind::BinaryOperatorUnsupported,
+            return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                 Opcode::Binary(op),
-                args,
-            ));
+                args.to_vec(),
+            )));
         }
     };
 
@@ -71,11 +69,10 @@ pub fn pointer_arithmetic(op: BinaryOpcode, args: &[Object], l: i64, r: i64) -> 
         BinaryOpcode::Sub => l - r,
         _ => {
             // Reign in the pointer arithmetic madness!
-            return Err(Error::bad_arguments(
-                BadArgumentKind::BinaryOperatorUnsupported,
+            return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                 Opcode::Binary(op),
-                args,
-            ));
+                args.to_vec(),
+            )));
         }
     };
 
@@ -124,11 +121,10 @@ pub fn composite_index(args: &[Object]) -> Result<Object> {
                 Ok(object::FALSE)
             }
         }
-        _ => Err(Error::bad_arguments(
-            BadArgumentKind::BinaryOperatorUnsupported,
+        _ => Err(Error::Runtime(ErrorKind::OperatorUnsupported(
             Opcode::Binary(BinaryOpcode::Index),
-            args,
-        )),
+            args.to_vec(),
+        ))),
     }
 }
 

@@ -3,7 +3,7 @@
 use std::io;
 
 use super::{
-    error::{BadArgumentKind, Error, ErrorKind, Result},
+    error::{Error, ErrorKind, Result},
     frame::{Frame, FrameStack},
     op,
 };
@@ -242,11 +242,10 @@ impl Vm {
             },
             // Invalid combination.
             (_, _) => {
-                return Err(Error::bad_arguments(
-                    BadArgumentKind::UnaryOperatorUnsupported,
+                return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                     Opcode::Unary(op),
-                    &[obj.clone()],
-                ));
+                    vec![obj],
+                )));
             }
         };
 
@@ -273,11 +272,10 @@ impl Vm {
                     BinaryOpcode::GreaterThan => Object::Boolean(l > r),
                     BinaryOpcode::Index => {
                         // Indexing not supported on integers.
-                        return Err(Error::bad_arguments(
-                            BadArgumentKind::BinaryOperatorUnsupported,
+                        return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                             Opcode::Binary(op),
-                            args,
-                        ));
+                            args.to_vec(),
+                        )));
                     }
                 };
 
@@ -291,11 +289,10 @@ impl Vm {
                     BinaryOpcode::NotEqual => l != r,
                     _ => {
                         // No other binary operators are supported on booleans.
-                        return Err(Error::bad_arguments(
-                            BadArgumentKind::BinaryOperatorUnsupported,
+                        return Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                             Opcode::Binary(op),
-                            args,
-                        ));
+                            args.to_vec(),
+                        )));
                     }
                 };
 
@@ -328,11 +325,10 @@ impl Vm {
                     self.push(out);
                     Ok(())
                 } else {
-                    Err(Error::bad_arguments(
-                        BadArgumentKind::BinaryOperatorUnsupported,
+                    Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                         Opcode::Binary(op),
-                        args,
-                    ))
+                        args.to_vec(),
+                    )))
                 }
             }
             // Pointer arithmetic with integer operations.
@@ -360,19 +356,17 @@ impl Vm {
                     self.push(out);
                     Ok(())
                 } else {
-                    Err(Error::bad_arguments(
-                        BadArgumentKind::BinaryOperatorUnsupported,
+                    Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                         Opcode::Binary(op),
-                        args,
-                    ))
+                        args.to_vec(),
+                    )))
                 }
             }
             // Invalid combination.
-            (_, _) => Err(Error::bad_arguments(
-                BadArgumentKind::BinaryOperatorUnsupported,
+            (_, _) => Err(Error::Runtime(ErrorKind::OperatorUnsupported(
                 Opcode::Binary(op),
-                args,
-            )),
+                args.to_vec(),
+            ))),
         }
     }
 
