@@ -150,7 +150,7 @@ mod tests {
             assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
             assert_eq!(resolved, *symbol, "test case symbol mismatch");
 
-            st.resolve(&"a").expect("a should always be defined");
+            st.resolve("a").expect("a should always be defined");
         }
     }
 
@@ -193,12 +193,12 @@ mod tests {
             assert_eq!(defined, resolved, "defined and resolved symbol mismatch");
             assert_eq!(resolved, *symbol, "test case symbol mismatch");
 
-            let gsym = nested.resolve(&"a").expect("a should always be defined");
+            let gsym = nested.resolve("a").expect("a should always be defined");
             assert_eq!(0, gsym.index);
             assert_eq!(Scope::Global, gsym.scope);
 
             let bsym = nested
-                .resolve(&"first")
+                .resolve("first")
                 .expect("first should always be defined");
             assert_eq!(0, bsym.index);
             assert_eq!(Scope::Builtin, bsym.scope);

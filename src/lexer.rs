@@ -107,7 +107,7 @@ impl<'a> Lexer<'a> {
                     }
                 } else if is_number(self.ch) {
                     // TODO(mdlayher): negative numbers.
-                    return Ok(self.read_number()?);
+                    return self.read_number();
                 } else {
                     // No known tokens for this character, return Illegal.
                     Token::Illegal(self.ch)
@@ -251,7 +251,7 @@ fn is_letter(c: char) -> bool {
 
 // Determines if a character is considered a number in Monkey.
 fn is_number(c: char) -> bool {
-    c >= '0' && c <= '9'
+    ('0'..='9').contains(&c)
 }
 
 // Parses an Integer from a sequence of characters.
@@ -261,7 +261,7 @@ fn parse_int(chars: &[char]) -> Result<Integer> {
         let raw: String = chars.iter().collect();
         return Ok(Integer {
             radix: Radix::Decimal,
-            value: i64::from_str_radix(&raw, 10).map_err(Error::IllegalInteger)?,
+            value: raw.parse::<i64>().map_err(Error::IllegalInteger)?,
         });
     }
 

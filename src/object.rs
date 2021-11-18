@@ -171,12 +171,12 @@ impl Builtin {
     /// `Object`.
     pub fn apply(&self, args: &[Object]) -> Result<Object> {
         match self {
-            Builtin::First => builtin_first(&args),
-            Builtin::Last => builtin_last(&args),
-            Builtin::Len => builtin_len(&args),
-            Builtin::Push => builtin_push(&args),
-            Builtin::Puts => builtin_puts(&args),
-            Builtin::Rest => builtin_rest(&args),
+            Builtin::First => builtin_first(args),
+            Builtin::Last => builtin_last(args),
+            Builtin::Len => builtin_len(args),
+            Builtin::Push => builtin_push(args),
+            Builtin::Puts => builtin_puts(args),
+            Builtin::Rest => builtin_rest(args),
         }
     }
 }

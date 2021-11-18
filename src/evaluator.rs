@@ -343,10 +343,7 @@ fn eval_identifier(id: String, env: &mut object::Environment) -> Result<Object> 
         Some(b) => Ok(Object::Builtin(b)),
 
         // Didn't find a built-in, look for user-defined identifiers.
-        None => Ok(env
-            .get(&id)
-            .ok_or_else(|| Error::UnknownIdentifier(id))?
-            .clone()),
+        None => Ok(env.get(&id).ok_or(Error::UnknownIdentifier(id))?.clone()),
     }
 }
 
@@ -371,7 +368,7 @@ fn apply_function(
     err_node: ast::Node,
 ) -> Result<Object> {
     // Bind function arguments in an enclosed environment.
-    let mut extended_env = extend_function_env(&function, &args, err_node)?;
+    let mut extended_env = extend_function_env(&function, args, err_node)?;
     let evaluated = eval(
         ast::Node::Statement(ast::Statement::Block(function.body)),
         &mut extended_env,
@@ -413,10 +410,7 @@ fn extend_function_env(
 
 /// Determines if an object is truthy in Monkey.
 fn is_truthy(obj: &Object) -> bool {
-    match obj {
-        Object::Boolean(false) | Object::Null => false,
-        Object::Boolean(true) | _ => true,
-    }
+    !matches!(obj, Object::Boolean(false) | Object::Null)
 }
 
 /// A Result type specialized use with for an Error.
